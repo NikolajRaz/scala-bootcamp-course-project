@@ -1,9 +1,7 @@
 package com.evolution.bootcamp.courseproject
 
-import org.scalactic.ErrorMessage
-
 final case class PlayerBet(playerId: Int, placedScores: Int, bet: Bet) {
-  def getResult(number: Number): Either[ErrorMessage, Int] = {
+  def getResult(number: Number): Either[String, Int] = {
     val result = if (bet.numbers.contains(number)) {
       bet.betType match {
         case "Si" => Some(placedScores * 36)

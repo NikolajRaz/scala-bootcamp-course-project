@@ -25,6 +25,8 @@ build
 .cache
 .cache-main
 usefullinf/
+curl
+websocat
 
 #general
 *.class
