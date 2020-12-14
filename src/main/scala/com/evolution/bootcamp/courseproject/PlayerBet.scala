@@ -1,8 +1,8 @@
 package com.evolution.bootcamp.courseproject
 
-final case class PlayerBet(playerId: Int, placedScores: Int, bet: Bet) {
-  def getResult(number: Number): Either[String, Int] = {
-    val result = if (bet.numbers.contains(number)) {
+final case class PlayerBet(playerId: Int, placedScores: Long, bet: Bet) {
+  def getResult(number: Number): Either[String, Long] = {
+    val result: Option[Long] = if (bet.numbers.contains(number)) {
       bet.betType match {
         case "Si" => Some(placedScores * 36)
         case "Sp" => Some(placedScores * 18)
