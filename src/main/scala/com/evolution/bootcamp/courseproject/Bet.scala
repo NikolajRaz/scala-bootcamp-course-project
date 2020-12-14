@@ -1,13 +1,11 @@
 package com.evolution.bootcamp.courseproject
 
-import org.scalactic.ErrorMessage
-
 final case class Bet(betType: String, numbers: List[Number])
 
 object Bet {
   val streets = List(1, 4, 7, 10, 13, 16, 19, 22, 25, 28, 31, 34)
 
-  def of(betType: String, numbers: List[Number]): Either[ErrorMessage, Bet] = {
+  def of(betType: String, numbers: List[Number]): Either[String, Bet] = {
     val validNumbers: Option[List[Number]] = betType match {
       case "Si" => single(numbers)
       case "Sp" => split(numbers)

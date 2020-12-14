@@ -1,7 +1,6 @@
 package com.evolution.bootcamp.courseproject
 
 import cats.syntax.either._
-import org.scalactic.ErrorMessage
 
 final case class Number(value: Int) {
   def color: Color = value match {
@@ -18,7 +17,7 @@ object Number {
   val blackValues =
     List(2, 4, 6, 8, 10, 11, 13, 15, 17, 20, 22, 24, 26, 28, 29, 31, 33, 35)
 
-  def of(value: Int): Either[ErrorMessage, Number] = {
+  def of(value: Int): Either[String, Number] = {
     if (value < 0 || value > 36) s"Incorrect value of a number - $value".asLeft
     else Number(value).asRight
   }
