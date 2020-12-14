@@ -22,7 +22,8 @@ object Server extends IOApp {
       case req @ GET -> Root / "start" =>
         val echoPipe: Pipe[IO, WebSocketFrame, WebSocketFrame] =
           _.collect {
-            case WebSocketFrame.Text(message, _) => WebSocketFrame.Text(message)
+            case WebSocketFrame.Text(message, other) =>
+              WebSocketFrame.Text(message + other)
           }
         for {
           response <- WebSocketBuilder[IO].build(
@@ -40,8 +41,8 @@ object Server extends IOApp {
 
   override def run(args: List[String]): IO[ExitCode] = {
     for {
-      cacheOfPlayers <- Cache.of[IO, Int, Player](45.seconds, 5.seconds)
-      cacheOfBets <- Cache.of[IO, Int, PlayerBet](3600.seconds, 100.seconds)
+      cacheOfPlayers <- Cache.of[IO, Int, Player](3600.seconds, 100.seconds)
+      cacheOfBets <- Cache.of[IO, Int, PlayerBet](60.seconds, 5.seconds)
       queue <- Queue.unbounded[IO, WebSocketFrame]
       exitCode <- BlazeServerBuilder[IO](ExecutionContext.global)
         .bindHttp(port = 9002, host = "localhost")
