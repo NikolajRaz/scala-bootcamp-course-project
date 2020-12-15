@@ -18,6 +18,7 @@ import scala.concurrent.duration._
 import scala.concurrent.ExecutionContext
 
 //websocat "ws://127.0.0.1:9002/roulette"
+//{"id": "1", "placedScores": "10", "betType": "Si", "placedNumbers": [1]}
 
 object Protocol {
   final case class FromClient(id: Int,
@@ -52,7 +53,7 @@ object Server extends IOApp {
             case WebSocketFrame.Text(message, _) => {
               val fromClient: Either[Error, FromClient] =
                 decode[FromClient](message)
-              val string: String = fromClient match {
+              val string: IO[String] = fromClient match {
                 case Right(value) =>
                   inspectPlayerMessage(
                     value,
@@ -62,11 +63,14 @@ object Server extends IOApp {
                     countOfPlayers,
                     countOfBets
                   )
-                case Left(error) => error.toString
+                case Left(error) => IO(error.toString)
               }
-              WebSocketFrame.Text(string)
+              for {
+                message <- string
+                response = WebSocketFrame.Text(message)
+              } yield response
             }
-          }
+          }.evalMap(text => text)
         }
 
         for {
@@ -83,13 +87,16 @@ object Server extends IOApp {
                                    cacheOfPlayers: Cache[IO, Int, Player],
                                    cacheOfBets: Cache[IO, Int, PlayerBet],
                                    countOfPlayers: Ref[IO, Int],
-                                   countOfBets: Ref[IO, Int]): String = {
+                                   countOfBets: Ref[IO, Int]): IO[String] = {
 
     if (fromClient.id == 0) {
-      countOfPlayers.modify(
-        x => (x + 1, IO(cacheOfPlayers.put(x, Player(x, defaultScores))))
-      )
-      "New player was created, please make your bets"
+      val res = for {
+        count <- countOfPlayers.get
+        _ <- cacheOfPlayers.put(count, Player(count, defaultScores))
+        _ <- countOfPlayers.update(x => x + 1)
+        result <- IO("New player was created, please make your bets")
+      } yield result
+      res
     } else {
       val placedNumbers =
         toEitherList(
@@ -103,34 +110,51 @@ object Server extends IOApp {
             Bet.of(fromClient.betType, x)
           bet match {
             case Right(value) =>
-              val playerBet =
-                PlayerBet(fromClient.id, fromClient.placedScores, value)
-              val status = for {
-                player <- cacheOfPlayers.get(fromClient.id)
-                placedScores = fromClient.placedScores
-                status <- player match {
-                  case Some(value) if value.scores >= placedScores =>
-                    cacheOfPlayers.update(
-                      fromClient.id,
-                      Player(fromClient.id, value.scores - placedScores)
-                    )
-                    countOfBets.modify(
-                      x => (x + 1, IO(cacheOfBets.put(x, playerBet)))
-                    )
-                    IO("Bet was successfully placed")
-                  case Some(value) =>
-                    IO(s"Not enough scores on your wallet - $value")
-                  case None => IO("No such user")
-                }
-              } yield status
-              //проблема в том что статус находится в IO
-              "Operation is done: "
-            case Left(error) => error
+              checkBalance(
+                value,
+                fromClient,
+                queue,
+                cacheOfPlayers,
+                cacheOfBets,
+                countOfPlayers,
+                countOfBets
+              )
+            case Left(error) => IO(error)
           }
-        case _ => "Incorrect numbers format"
+        case _ => IO("Incorrect numbers format")
       }
       message
     }
+  }
+
+  private def checkBalance(bet: Bet,
+                           fromClient: FromClient,
+                           queue: Queue[IO, WebSocketFrame],
+                           cacheOfPlayers: Cache[IO, Int, Player],
+                           cacheOfBets: Cache[IO, Int, PlayerBet],
+                           countOfPlayers: Ref[IO, Int],
+                           countOfBets: Ref[IO, Int]): IO[String] = {
+    val playerBet =
+      PlayerBet(fromClient.id, fromClient.placedScores, bet)
+    for {
+      player <- cacheOfPlayers.get(fromClient.id)
+      placedScores = fromClient.placedScores
+      count <- countOfBets.get
+      status <- player match {
+        case Some(value) if value.scores >= placedScores =>
+          for {
+            _ <- cacheOfPlayers.update(
+              fromClient.id,
+              Player(fromClient.id, value.scores - placedScores)
+            )
+            _ <- cacheOfBets.put(count, playerBet)
+            _ <- countOfBets.update(x => x + 1)
+            result <- IO(s"Bet was successfully placed $count")
+          } yield result
+        case Some(value) => IO(s"Not enough scores on wallet - ${value.scores}")
+        case None        => IO(s"There is no user with id - ${fromClient.id}")
+      }
+    } yield status
   }
 
   private def toEitherList(
