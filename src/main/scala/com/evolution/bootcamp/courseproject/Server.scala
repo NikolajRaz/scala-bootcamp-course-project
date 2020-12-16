@@ -2,11 +2,12 @@ package com.evolution.bootcamp.courseproject
 
 import cats.effect.{ExitCode, IO, IOApp}
 import cats.effect.concurrent.Ref
-import com.evolution.bootcamp.courseproject.Protocol.FromClient
+import com.evolution.bootcamp.courseproject.Protocol.{FromClient, ToClient}
 import fs2.concurrent.Queue
 import fs2.Pipe
 import io.circe._
 import io.circe.parser._
+import io.circe.syntax._
 import org.http4s._
 import org.http4s.dsl.io._
 import org.http4s.implicits._
@@ -24,7 +25,7 @@ object Protocol {
   final case class FromClient(placedScores: Long,
                               betType: String,
                               placedNumbers: List[Int])
-  final case class ToClient(message: String)
+  final case class ToClient(gamePhase: Int, scoresLeft: Long, message: String)
 
   implicit val fromClientDecoder: Decoder[FromClient] =
     Decoder.forProduct3("placedScores", "betType", "placedNumbers")(
@@ -33,6 +34,12 @@ object Protocol {
   implicit val fromClientEncoder: Encoder[FromClient] =
     Encoder.forProduct3("placedScores", "betType", "placedNumbers")(
       v => (v.placedScores, v.betType, v.placedNumbers)
+    )
+  implicit val toClientDecoder: Decoder[ToClient] =
+    Decoder.forProduct3("gamePhase", "scoresLeft", "message")(ToClient.apply)
+  implicit val toClientEncoder: Encoder[ToClient] =
+    Encoder.forProduct3("gamePhase", "scoresLeft", "message")(
+      v => (v.gamePhase, v.scoresLeft, v.message)
     )
 }
 
@@ -56,7 +63,6 @@ object Server extends IOApp {
                   inspectPlayerMessage(
                     id,
                     value,
-                    queue,
                     cacheOfPlayers,
                     cacheOfBets,
                     countOfPlayers,
@@ -66,7 +72,13 @@ object Server extends IOApp {
               }
               for {
                 message <- string
-                response = WebSocketFrame.Text(message)
+                player <- cacheOfPlayers.get(id)
+                scoresLeft = player match {
+                  case Some(value) => value.scores
+                  case None        => 0
+                }
+                toClient = ToClient(1, scoresLeft, message).asJson.toString
+                response = WebSocketFrame.Text(toClient)
               } yield response
             }
           }.evalMap(text => text)
@@ -87,7 +99,6 @@ object Server extends IOApp {
 
   private def inspectPlayerMessage(id: Int,
                                    fromClient: FromClient,
-                                   queue: Queue[IO, WebSocketFrame],
                                    cacheOfPlayers: Cache[IO, Int, Player],
                                    cacheOfBets: Cache[IO, Int, PlayerBet],
                                    countOfPlayers: Ref[IO, Int],
@@ -108,10 +119,8 @@ object Server extends IOApp {
               id,
               value,
               fromClient,
-              queue,
               cacheOfPlayers,
               cacheOfBets,
-              countOfPlayers,
               countOfBets
             )
           case Left(error) => IO(error)
@@ -124,10 +133,8 @@ object Server extends IOApp {
   private def checkBalance(id: Int,
                            bet: Bet,
                            fromClient: FromClient,
-                           queue: Queue[IO, WebSocketFrame],
                            cacheOfPlayers: Cache[IO, Int, Player],
                            cacheOfBets: Cache[IO, Int, PlayerBet],
-                           countOfPlayers: Ref[IO, Int],
                            countOfBets: Ref[IO, Int]): IO[String] = {
     val playerBet =
       PlayerBet(id, fromClient.placedScores, bet)
@@ -144,7 +151,7 @@ object Server extends IOApp {
             )
             _ <- cacheOfBets.put(count, playerBet)
             _ <- countOfBets.update(x => x + 1)
-            result <- IO(s"Bet was successfully placed $count")
+            result <- IO(s"Bet was successfully placed")
           } yield result
         case Some(value) => IO(s"Not enough scores on wallet - ${value.scores}")
         case None        => IO(s"There is no user with id - $id")
