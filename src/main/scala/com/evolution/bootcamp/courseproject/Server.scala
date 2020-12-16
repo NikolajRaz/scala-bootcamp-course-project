@@ -18,22 +18,21 @@ import scala.concurrent.duration._
 import scala.concurrent.ExecutionContext
 
 //websocat "ws://127.0.0.1:9002/roulette"
-//{"id": "1", "placedScores": "10", "betType": "Si", "placedNumbers": [1]}
+//{"placedScores": "10", "betType": "Si", "placedNumbers": [1]}
 
 object Protocol {
-  final case class FromClient(id: Int,
-                              placedScores: Long,
+  final case class FromClient(placedScores: Long,
                               betType: String,
                               placedNumbers: List[Int])
   final case class ToClient(message: String)
 
   implicit val fromClientDecoder: Decoder[FromClient] =
-    Decoder.forProduct4("id", "placedScores", "betType", "placedNumbers")(
+    Decoder.forProduct3("placedScores", "betType", "placedNumbers")(
       FromClient.apply
     )
   implicit val fromClientEncoder: Encoder[FromClient] =
-    Encoder.forProduct4("id", "placedScores", "betType", "placedNumbers")(
-      v => (v.id, v.placedScores, v.betType, v.placedNumbers)
+    Encoder.forProduct3("placedScores", "betType", "placedNumbers")(
+      v => (v.placedScores, v.betType, v.placedNumbers)
     )
 }
 
@@ -46,9 +45,8 @@ object Server extends IOApp {
                countOfBets: Ref[IO, Int]): HttpRoutes[IO] =
     HttpRoutes.of[IO] {
       case req @ GET -> Root / "roulette" =>
-        def echoPipe(
-          queue: Queue[IO, WebSocketFrame]
-        ): Pipe[IO, WebSocketFrame, WebSocketFrame] = {
+        def echoPipe(queue: Queue[IO, WebSocketFrame],
+                     id: Int): Pipe[IO, WebSocketFrame, WebSocketFrame] = {
           _.collect {
             case WebSocketFrame.Text(message, _) => {
               val fromClient: Either[Error, FromClient] =
@@ -56,6 +54,7 @@ object Server extends IOApp {
               val string: IO[String] = fromClient match {
                 case Right(value) =>
                   inspectPlayerMessage(
+                    id,
                     value,
                     queue,
                     cacheOfPlayers,
@@ -75,59 +74,55 @@ object Server extends IOApp {
 
         for {
           queue <- Queue.unbounded[IO, WebSocketFrame]
+          count <- countOfPlayers.get
+          _ <- cacheOfPlayers.put(count, Player(count, defaultScores))
+          id = count
+          _ <- countOfPlayers.update(x => x + 1)
           response <- WebSocketBuilder[IO].build(
             receive = queue.enqueue,
-            send = queue.dequeue.through(echoPipe(queue)),
+            send = queue.dequeue.through(echoPipe(queue, id)),
           )
         } yield response
     }
 
-  private def inspectPlayerMessage(fromClient: FromClient,
+  private def inspectPlayerMessage(id: Int,
+                                   fromClient: FromClient,
                                    queue: Queue[IO, WebSocketFrame],
                                    cacheOfPlayers: Cache[IO, Int, Player],
                                    cacheOfBets: Cache[IO, Int, PlayerBet],
                                    countOfPlayers: Ref[IO, Int],
                                    countOfBets: Ref[IO, Int]): IO[String] = {
+    val placedNumbers =
+      toEitherList(
+        fromClient.placedNumbers
+          .map(x => Number.of(x))
+      )
 
-    if (fromClient.id == 0) {
-      val res = for {
-        count <- countOfPlayers.get
-        _ <- cacheOfPlayers.put(count, Player(count, defaultScores))
-        _ <- countOfPlayers.update(x => x + 1)
-        result <- IO("New player was created, please make your bets")
-      } yield result
-      res
-    } else {
-      val placedNumbers =
-        toEitherList(
-          fromClient.placedNumbers
-            .map(x => Number.of(x))
-        )
-
-      val message = placedNumbers match {
-        case Right(x) =>
-          val bet =
-            Bet.of(fromClient.betType, x)
-          bet match {
-            case Right(value) =>
-              checkBalance(
-                value,
-                fromClient,
-                queue,
-                cacheOfPlayers,
-                cacheOfBets,
-                countOfPlayers,
-                countOfBets
-              )
-            case Left(error) => IO(error)
-          }
-        case _ => IO("Incorrect numbers format")
-      }
-      message
+    val message = placedNumbers match {
+      case Right(x) =>
+        val bet =
+          Bet.of(fromClient.betType, x)
+        bet match {
+          case Right(value) =>
+            checkBalance(
+              id,
+              value,
+              fromClient,
+              queue,
+              cacheOfPlayers,
+              cacheOfBets,
+              countOfPlayers,
+              countOfBets
+            )
+          case Left(error) => IO(error)
+        }
+      case _ => IO("Incorrect numbers format")
     }
+    message
   }
 
-  private def checkBalance(bet: Bet,
+  private def checkBalance(id: Int,
+                           bet: Bet,
                            fromClient: FromClient,
                            queue: Queue[IO, WebSocketFrame],
                            cacheOfPlayers: Cache[IO, Int, Player],
@@ -135,24 +130,24 @@ object Server extends IOApp {
                            countOfPlayers: Ref[IO, Int],
                            countOfBets: Ref[IO, Int]): IO[String] = {
     val playerBet =
-      PlayerBet(fromClient.id, fromClient.placedScores, bet)
+      PlayerBet(id, fromClient.placedScores, bet)
     for {
-      player <- cacheOfPlayers.get(fromClient.id)
+      player <- cacheOfPlayers.get(id)
       placedScores = fromClient.placedScores
       count <- countOfBets.get
       status <- player match {
         case Some(value) if value.scores >= placedScores =>
           for {
             _ <- cacheOfPlayers.update(
-              fromClient.id,
-              Player(fromClient.id, value.scores - placedScores)
+              id,
+              Player(id, value.scores - placedScores)
             )
             _ <- cacheOfBets.put(count, playerBet)
             _ <- countOfBets.update(x => x + 1)
             result <- IO(s"Bet was successfully placed $count")
           } yield result
         case Some(value) => IO(s"Not enough scores on wallet - ${value.scores}")
-        case None        => IO(s"There is no user with id - ${fromClient.id}")
+        case None        => IO(s"There is no user with id - $id")
       }
     } yield status
   }
