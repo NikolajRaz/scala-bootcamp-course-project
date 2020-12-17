@@ -72,16 +72,14 @@ object Server extends IOApp {
                 case Left(error) => IO(error.toString)
               }
               for {
-                generatedNumber <- game.get
                 phase <- game.getGamePhase
                 message <- string
-                finalMessage = message + " : " + generatedNumber.toString + ", phase: " + phase.toString
                 player <- cacheOfPlayers.get(id)
                 scoresLeft = player match {
                   case Some(value) => value.scores
                   case None        => 0
                 }
-                toClient = ToClient(phase, scoresLeft, finalMessage).asJson.toString
+                toClient = ToClient(phase, scoresLeft, message).asJson.toString
                 response = WebSocketFrame.Text(toClient)
               } yield response
             }

@@ -37,7 +37,6 @@ object Game {
           case (expirationTime, value, _)
               if curTime >= expirationTime - secondPhaseDuration.toMillis - thirdPhaseDuration.toMillis =>
             (expirationTime, value, 2)
-
           case _ => curState
         }
         _ <- state.set(newState)
