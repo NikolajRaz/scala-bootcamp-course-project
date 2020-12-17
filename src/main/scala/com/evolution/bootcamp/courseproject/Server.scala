@@ -46,7 +46,8 @@ object Protocol {
 object Server extends IOApp {
   val defaultScores: Long = 100
 
-  def roulette(cacheOfPlayers: Cache[IO, Int, Player],
+  def roulette(game: Game,
+               cacheOfPlayers: Cache[IO, Int, Player],
                cacheOfBets: Cache[IO, Int, PlayerBet],
                countOfPlayers: Ref[IO, Int],
                countOfBets: Ref[IO, Int]): HttpRoutes[IO] =
@@ -71,13 +72,16 @@ object Server extends IOApp {
                 case Left(error) => IO(error.toString)
               }
               for {
+                generatedNumber <- game.get
+                phase <- game.getGamePhase
                 message <- string
+                finalMessage = message + " : " + generatedNumber.toString + ", phase: " + phase.toString
                 player <- cacheOfPlayers.get(id)
                 scoresLeft = player match {
                   case Some(value) => value.scores
                   case None        => 0
                 }
-                toClient = ToClient(1, scoresLeft, message).asJson.toString
+                toClient = ToClient(phase, scoresLeft, finalMessage).asJson.toString
                 response = WebSocketFrame.Text(toClient)
               } yield response
             }
@@ -168,11 +172,12 @@ object Server extends IOApp {
     }
   }
 
-  private def webSocketApp(cacheOfPlayers: Cache[IO, Int, Player],
+  private def webSocketApp(game: Game,
+                           cacheOfPlayers: Cache[IO, Int, Player],
                            cacheOfBets: Cache[IO, Int, PlayerBet],
                            countOfPlayers: Ref[IO, Int],
                            countOfBets: Ref[IO, Int]) = {
-    roulette(cacheOfPlayers, cacheOfBets, countOfPlayers, countOfBets)
+    roulette(game, cacheOfPlayers, cacheOfBets, countOfPlayers, countOfBets)
   }.orNotFound
 
   override def run(args: List[String]): IO[ExitCode] = {
@@ -181,12 +186,13 @@ object Server extends IOApp {
       cacheOfBets <- Cache.of[IO, Int, PlayerBet](60.seconds, 5.seconds)
       countOfPlayers <- Ref.of[IO, Int](1)
       countOfBets <- Ref.of[IO, Int](0)
-      q <- Queue.unbounded[IO, WebSocketFrame]
+      game <- Game.of
       exitCode <- {
         BlazeServerBuilder[IO](ExecutionContext.global)
           .bindHttp(port = 9002, host = "localhost")
           .withHttpApp(
             webSocketApp(
+              game,
               cacheOfPlayers,
               cacheOfBets,
               countOfPlayers,
