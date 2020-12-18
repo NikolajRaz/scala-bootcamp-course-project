@@ -1,11 +1,14 @@
 package com.evolution.bootcamp.courseproject
 
+import java.util.UUID
+
 import cats.effect.{ExitCode, IO, IOApp}
 import cats.effect.concurrent.Ref
 import com.evolution.bootcamp.courseproject.Protocol.{FromClient, ToClient}
 import fs2.concurrent.Queue
 import fs2.Pipe
 import io.circe._
+import io.circe.generic.semiauto._
 import io.circe.parser._
 import io.circe.syntax._
 import org.http4s._
@@ -25,44 +28,39 @@ object Protocol {
   final case class FromClient(placedScores: Long,
                               betType: String,
                               placedNumbers: List[Int])
-  final case class ToClient(gamePhase: Int, scoresLeft: Long, message: String)
+  final case class ToClient(scoresLeft: Long, message: String)
+  final case class ResultMessage(scoresLeft: Long,
+                                 scoresWon: Long,
+                                 message: String)
 
-  implicit val fromClientDecoder: Decoder[FromClient] =
-    Decoder.forProduct3("placedScores", "betType", "placedNumbers")(
-      FromClient.apply
-    )
-  implicit val fromClientEncoder: Encoder[FromClient] =
-    Encoder.forProduct3("placedScores", "betType", "placedNumbers")(
-      v => (v.placedScores, v.betType, v.placedNumbers)
-    )
-  implicit val toClientDecoder: Decoder[ToClient] =
-    Decoder.forProduct3("gamePhase", "scoresLeft", "message")(ToClient.apply)
-  implicit val toClientEncoder: Encoder[ToClient] =
-    Encoder.forProduct3("gamePhase", "scoresLeft", "message")(
-      v => (v.gamePhase, v.scoresLeft, v.message)
-    )
+  implicit val fromClientDecoder: Decoder[FromClient] = deriveDecoder
+  implicit val fromClientEncoder: Encoder[FromClient] = deriveEncoder
+  implicit val toClientDecoder: Decoder[ToClient] = deriveDecoder
+  implicit val toClientEncoder: Encoder[ToClient] = deriveEncoder
+  implicit val resultMessageDecoder: Decoder[ResultMessage] = deriveDecoder
+  implicit val resultMessageEncoder: Encoder[ResultMessage] = deriveEncoder
 }
 
 object Server extends IOApp {
   val defaultScores: Long = 100
 
   def roulette(game: Game,
-               cacheOfPlayers: Cache[IO, Int, Player],
+               cacheOfPlayers: Cache[IO, UUID, Player],
                cacheOfBets: Cache[IO, Int, PlayerBet],
+               cacheOfResults: Cache[IO, UUID, Result],
                countOfPlayers: Ref[IO, Int],
                countOfBets: Ref[IO, Int]): HttpRoutes[IO] =
     HttpRoutes.of[IO] {
       case req @ GET -> Root / "roulette" =>
         def echoPipe(queue: Queue[IO, WebSocketFrame],
-                     id: Int): Pipe[IO, WebSocketFrame, WebSocketFrame] = {
+                     id: UUID): Pipe[IO, WebSocketFrame, WebSocketFrame] = {
           _.collect {
             case WebSocketFrame.Text(message, _) => {
-              val fromClient: Either[Error, FromClient] =
-                decode[FromClient](message)
-              val string: IO[String] = fromClient match {
+              val string = decode[FromClient](message) match {
                 case Right(value) =>
                   inspectPlayerMessage(
                     id,
+                    game,
                     value,
                     cacheOfPlayers,
                     cacheOfBets,
@@ -72,14 +70,13 @@ object Server extends IOApp {
                 case Left(error) => IO(error.toString)
               }
               for {
-                phase <- game.getGamePhase
                 message <- string
                 player <- cacheOfPlayers.get(id)
                 scoresLeft = player match {
                   case Some(value) => value.scores
                   case None        => 0
                 }
-                toClient = ToClient(phase, scoresLeft, message).asJson.toString
+                toClient = ToClient(scoresLeft, message).asJson.toString
                 response = WebSocketFrame.Text(toClient)
               } yield response
             }
@@ -88,54 +85,63 @@ object Server extends IOApp {
 
         for {
           queue <- Queue.unbounded[IO, WebSocketFrame]
-          count <- countOfPlayers.get
-          _ <- cacheOfPlayers.put(count, Player(count, defaultScores))
-          id = count
+          id = UUID.randomUUID()
+          _ <- cacheOfPlayers.put(id, Player(id, defaultScores, queue))
           _ <- countOfPlayers.update(x => x + 1)
-          response <- WebSocketBuilder[IO].build(
-            receive = queue.enqueue,
-            send = queue.dequeue.through(echoPipe(queue, id)),
-          )
+          response <- WebSocketBuilder[IO]
+            .build(
+              receive = queue.enqueue,
+              send = queue.dequeue.through(echoPipe(queue, id))
+            )
         } yield response
     }
 
-  private def inspectPlayerMessage(id: Int,
+  private def inspectPlayerMessage(id: UUID,
+                                   game: Game,
                                    fromClient: FromClient,
-                                   cacheOfPlayers: Cache[IO, Int, Player],
+                                   cacheOfPlayers: Cache[IO, UUID, Player],
                                    cacheOfBets: Cache[IO, Int, PlayerBet],
                                    countOfPlayers: Ref[IO, Int],
                                    countOfBets: Ref[IO, Int]): IO[String] = {
-    val placedNumbers =
-      toEitherList(
-        fromClient.placedNumbers
-          .map(x => Number.of(x))
-      )
-
-    val message = placedNumbers match {
-      case Right(x) =>
-        val bet =
-          Bet.of(fromClient.betType, x)
-        bet match {
-          case Right(value) =>
-            checkBalance(
-              id,
-              value,
-              fromClient,
-              cacheOfPlayers,
-              cacheOfBets,
-              countOfBets
+    for {
+      gamePhase <- game.getGamePhase
+      result <- gamePhase match {
+        case First =>
+          val placedNumbers =
+            toEitherList(
+              fromClient.placedNumbers
+                .map(x => Number.of(x))
             )
-          case Left(error) => IO(error)
-        }
-      case _ => IO("Incorrect numbers format")
-    }
-    message
+
+          val message = placedNumbers match {
+            case Right(x) =>
+              val bet =
+                Bet.of(fromClient.betType, x)
+              bet match {
+                case Right(value) =>
+                  checkBalance(
+                    id,
+                    value,
+                    fromClient,
+                    cacheOfPlayers,
+                    cacheOfBets,
+                    countOfBets
+                  )
+                case Left(error) => IO(error)
+              }
+            case _ => IO("Incorrect numbers format")
+          }
+          message
+        case _ => IO("You can't place bets in this game phase!")
+      }
+    } yield result
+
   }
 
-  private def checkBalance(id: Int,
+  private def checkBalance(id: UUID,
                            bet: Bet,
                            fromClient: FromClient,
-                           cacheOfPlayers: Cache[IO, Int, Player],
+                           cacheOfPlayers: Cache[IO, UUID, Player],
                            cacheOfBets: Cache[IO, Int, PlayerBet],
                            countOfBets: Ref[IO, Int]): IO[String] = {
     val playerBet =
@@ -149,7 +155,7 @@ object Server extends IOApp {
           for {
             _ <- cacheOfPlayers.update(
               id,
-              Player(id, value.scores - placedScores)
+              Player(id, value.scores - placedScores, value.connection)
             )
             _ <- cacheOfBets.put(count, playerBet)
             _ <- countOfBets.update(x => x + 1)
@@ -171,20 +177,29 @@ object Server extends IOApp {
   }
 
   private def webSocketApp(game: Game,
-                           cacheOfPlayers: Cache[IO, Int, Player],
+                           cacheOfPlayers: Cache[IO, UUID, Player],
                            cacheOfBets: Cache[IO, Int, PlayerBet],
+                           cacheOfResults: Cache[IO, UUID, Result],
                            countOfPlayers: Ref[IO, Int],
                            countOfBets: Ref[IO, Int]) = {
-    roulette(game, cacheOfPlayers, cacheOfBets, countOfPlayers, countOfBets)
+    roulette(
+      game,
+      cacheOfPlayers,
+      cacheOfBets,
+      cacheOfResults,
+      countOfPlayers,
+      countOfBets
+    )
   }.orNotFound
 
   override def run(args: List[String]): IO[ExitCode] = {
     for {
-      cacheOfPlayers <- Cache.of[IO, Int, Player](3600.seconds, 100.seconds)
+      cacheOfPlayers <- Cache.of[IO, UUID, Player](3600.seconds, 100.seconds)
       cacheOfBets <- Cache.of[IO, Int, PlayerBet](60.seconds, 5.seconds)
+      cacheOfResults <- Cache.of[IO, UUID, Result](30.seconds, 5.seconds)
       countOfPlayers <- Ref.of[IO, Int](1)
       countOfBets <- Ref.of[IO, Int](0)
-      game <- Game.of
+      game <- Game.of(cacheOfPlayers, cacheOfBets, cacheOfResults)
       exitCode <- {
         BlazeServerBuilder[IO](ExecutionContext.global)
           .bindHttp(port = 9002, host = "localhost")
@@ -193,6 +208,7 @@ object Server extends IOApp {
               game,
               cacheOfPlayers,
               cacheOfBets,
+              cacheOfResults,
               countOfPlayers,
               countOfBets
             )

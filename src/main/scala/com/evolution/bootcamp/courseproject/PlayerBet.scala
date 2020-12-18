@@ -1,30 +1,28 @@
 package com.evolution.bootcamp.courseproject
 
-final case class PlayerBet(playerId: Int, placedScores: Long, bet: Bet) {
-  def getResult(number: Number): Either[String, Long] = {
-    val result: Option[Long] = if (bet.numbers.contains(number)) {
+import java.util.UUID
+
+final case class PlayerBet(playerId: UUID, placedScores: Long, bet: Bet) {
+  def getResult(number: Number): Result = {
+    val result = if (bet.numbers.contains(number)) {
       bet.betType match {
-        case "Si" => Some(placedScores * 36)
-        case "Sp" => Some(placedScores * 18)
-        case "St" => Some(placedScores * 12)
-        case "Sq" => Some(placedScores * 9)
-        case "DS" => Some(placedScores * 6)
-        case "Ba" => Some(placedScores * 6)
-        case "FF" => Some(placedScores * 9)
-        case "Re" => Some(placedScores * 2)
-        case "Bl" => Some(placedScores * 2)
-        case "Ev" => Some(placedScores * 2)
-        case "Od" => Some(placedScores * 2)
-        case "Sm" => Some(placedScores * 2)
-        case "Bi" => Some(placedScores * 2)
-        case "Do" => Some(placedScores * 3)
-        case "Ro" => Some(placedScores * 3)
-        case _    => None
+        case "Si" => placedScores * 36
+        case "Sp" => placedScores * 18
+        case "St" => placedScores * 12
+        case "Sq" => placedScores * 9
+        case "DS" => placedScores * 6
+        case "Ba" => placedScores * 6
+        case "FF" => placedScores * 9
+        case "Re" => placedScores * 2
+        case "Bl" => placedScores * 2
+        case "Ev" => placedScores * 2
+        case "Od" => placedScores * 2
+        case "Sm" => placedScores * 2
+        case "Bi" => placedScores * 2
+        case "Do" => placedScores * 3
+        case "Ro" => placedScores * 3
       }
-    } else Some(0)
-    result match {
-      case Some(v) => Right(v)
-      case None    => Left("Error caused by bet type absence")
-    }
+    } else 0
+    Result(playerId, result)
   }
 }
