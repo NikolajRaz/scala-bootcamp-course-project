@@ -71,7 +71,7 @@ object Server extends IOApp {
                      id: UUID): Pipe[IO, WebSocketFrame, WebSocketFrame] = {
           _.collect {
             case WebSocketFrame.Text(message, _) => {
-              val string = decode[FromClient](message) match {
+              val json = decode[FromClient](message) match {
                 case Right(value) =>
                   inspectPlayerMessage(
                     id,
@@ -85,7 +85,7 @@ object Server extends IOApp {
                   IO(ErrorMessage(error.toString).asJson.toString)
               }
               for {
-                message <- string
+                message <- json
                 response = WebSocketFrame.Text(message)
               } yield response
             }
@@ -97,7 +97,7 @@ object Server extends IOApp {
         ): Pipe[IO, WebSocketFrame, WebSocketFrame] = {
           _.collect {
             case WebSocketFrame.Text(message, _) =>
-              val string = decode[PhaseUpdate](message) match {
+              val json = decode[PhaseUpdate](message) match {
                 case Right(value) =>
                   value.phase match {
                     case First =>
@@ -117,6 +117,11 @@ object Server extends IOApp {
                         player <- cacheOfPlayers.get(id)
                         playerResult <- cacheOfResults.get(id)
                         number <- game.get
+                        color = number.color match {
+                          case Red   => "red "
+                          case Black => "black "
+                          case _     => ""
+                        }
                         result = player match {
                           case Some(p) =>
                             playerResult match {
@@ -124,7 +129,7 @@ object Server extends IOApp {
                                 ResultMessage(
                                   p.scores,
                                   r.winningScores,
-                                  s"You won ${r.winningScores}. Drawn number was: $number. ${p.scores} left on your wallet."
+                                  s"You won ${r.winningScores}. Drawn number was: $color${number.value}. ${p.scores} left on your wallet."
                                 ).asJson.toString
                               case None =>
                                 WarnMessage(
@@ -140,7 +145,7 @@ object Server extends IOApp {
                   IO(ErrorMessage(error.toString).asJson.toString)
               }
               for {
-                message <- string
+                message <- json
                 response = WebSocketFrame.Text(message)
               } yield response
 
@@ -150,7 +155,7 @@ object Server extends IOApp {
         for {
           queue <- Queue.unbounded[IO, WebSocketFrame]
           id = UUID.randomUUID()
-          _ <- cacheOfPlayers.put(id, Player(id, defaultScores, queue))
+          _ <- cacheOfPlayers.put(id, Player(defaultScores, queue))
           combinedStream = Stream(
             queue.dequeue.through(echoPipe(queue, id)),
             generalQueue.dequeue.through(generalPipe(queue, id))
@@ -222,13 +227,16 @@ object Server extends IOApp {
       status <- player match {
         case Some(p) if p.scores >= placedScores =>
           for {
+            number <- game.get
+            currentBet = bet.getResult(number)
             playerBets <- cacheOfResults.get(id)
             _ <- cacheOfPlayers.update(
               id,
-              Player(id, p.scores - placedScores, p.connection)
+              Player(
+                p.scores - placedScores + currentBet.winningScores,
+                p.connection
+              )
             )
-            number <- game.get
-            currentBet = bet.getResult(Number(number))
             status <- playerBets match {
               case Some(s) =>
                 for {

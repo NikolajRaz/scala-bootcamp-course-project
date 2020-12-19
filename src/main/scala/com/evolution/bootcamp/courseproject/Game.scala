@@ -12,13 +12,13 @@ import org.http4s.websocket.WebSocketFrame
 import scala.concurrent.duration._
 
 trait Game {
-  def get: IO[Int]
+  def get: IO[Number]
   def getGamePhase: IO[Phase]
 }
 
-class RefGame(state: Ref[IO, (Long, Int, Phase)], expiresIn: FiniteDuration)
+class RefGame(state: Ref[IO, (Long, Number, Phase)], expiresIn: FiniteDuration)
     extends Game {
-  def get: IO[Int] = state.get.map { case (_, v, _)            => v }
+  def get: IO[Number] = state.get.map { case (_, v, _)         => v }
   def getGamePhase: IO[Phase] = state.get.map { case (_, _, v) => v }
 }
 
@@ -35,7 +35,7 @@ object Game {
     val thirdPhaseDuration = 10.seconds
     val rand = scala.util.Random
 
-    def expirationTimestamp(state: Ref[IO, (Long, Int, Phase)]): IO[Unit] = {
+    def expirationTimestamp(state: Ref[IO, (Long, Number, Phase)]): IO[Unit] = {
       for {
         _ <- T.sleep(checkOnExpirationEvery)
         curTime <- Clock[IO].realTime(MILLISECONDS)
@@ -45,7 +45,7 @@ object Game {
           case (expirationTime, _, _) if (curTime >= expirationTime) =>
             (
               curTime + expiresIn.toMillis,
-              0 + rand.nextInt((36 - 0) + 1),
+              Number(0 + rand.nextInt((36 - 0) + 1)),
               First
             )
           //Going to the third phase
@@ -67,9 +67,9 @@ object Game {
     }
     for {
       curTime <- Clock[IO].realTime(MILLISECONDS)
-      newGame <- Ref.of[IO, (Long, Int, Phase)](
+      newGame <- Ref.of[IO, (Long, Number, Phase)](
         curTime + expiresIn.toMillis,
-        0 + rand.nextInt((36 - 0) + 1),
+        Number(0 + rand.nextInt((36 - 0) + 1)),
         First
       )
       _ <- C.start(expirationTimestamp(newGame).foreverM.void)
