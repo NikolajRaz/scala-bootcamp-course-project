@@ -330,7 +330,7 @@ object Server extends IOApp {
   override def run(args: List[String]): IO[ExitCode] = {
     for {
       cacheOfPlayers <- Cache.of[IO, UUID, Player](3600.seconds, 100.seconds)
-      cacheOfResults <- Cache.of[IO, UUID, Result](20.seconds, 5.seconds)
+      cacheOfResults <- Cache.of[IO, UUID, Result](10.seconds, 1.seconds)
       initialMessage = PhaseUpdate(First, "Game has started").asJson.toString
       topic <- Topic[IO, WebSocketFrame](WebSocketFrame.Text(initialMessage))
       game <- Game.of(cacheOfPlayers, cacheOfResults, topic)

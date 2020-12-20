@@ -1,12 +1,11 @@
 package com.evolution.bootcamp.courseproject
 
 import akka.{Done, NotUsed}
-import akka.actor.{ActorRef, ActorSystem}
+import akka.actor.ActorSystem
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.model.StatusCodes
 import akka.http.scaladsl.model.ws.{Message, TextMessage, WebSocketRequest}
 import akka.stream.scaladsl.{Flow, Keep, Sink, Source}
-import akka.stream.OverflowStrategy
 import com.evolution.bootcamp.courseproject.Protocol.{
   ErrorMessage,
   FromClient,
@@ -27,10 +26,6 @@ object Client {
 
     val req = WebSocketRequest(uri = "ws://127.0.0.1:9002/roulette")
     val webSocketFlow = Http().webSocketClientFlow(req)
-
-    val messageSource: Source[Message, ActorRef] =
-      Source
-        .actorRef[TextMessage.Strict](bufferSize = 10, OverflowStrategy.fail)
 
     val messageSink: Sink[Message, NotUsed] =
       Flow[Message]
