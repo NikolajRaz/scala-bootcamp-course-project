@@ -5,7 +5,7 @@ import cats.effect.{Clock, Concurrent, IO, Timer}
 import cats.effect.concurrent.Ref
 import cats.syntax.all._
 import com.evolution.bootcamp.courseproject.Protocol.PhaseUpdate
-import fs2.concurrent.Queue
+import fs2.concurrent.Topic
 import io.circe.syntax._
 import org.http4s.websocket.WebSocketFrame
 
@@ -26,9 +26,9 @@ object Game {
   def of(
     cacheOfPlayers: Cache[IO, UUID, Player],
     cacheOfResults: Cache[IO, UUID, Result],
-    generalQueue: Queue[IO, WebSocketFrame]
+    t: Topic[IO, WebSocketFrame]
   )(implicit T: Timer[IO], C: Concurrent[IO]): IO[Game] = {
-    implicit val queue: Queue[IO, WebSocketFrame] = generalQueue
+    implicit val topic: Topic[IO, WebSocketFrame] = t
     val expiresIn = 30.seconds
     val checkOnExpirationEvery = 10.seconds
     val secondPhaseDuration = 10.seconds
@@ -76,8 +76,7 @@ object Game {
     } yield new RefGame(newGame, expiresIn)
   }
 
-  def sendToAll(
-    message: String
-  )(implicit queue: Queue[IO, WebSocketFrame]): IO[Unit] =
-    queue.enqueue1(WebSocketFrame.Text(message))
+  def sendToAll(message: String)(
+    implicit topic: Topic[IO, WebSocketFrame]
+  ): IO[Unit] = topic.publish1(WebSocketFrame.Text(message))
 }

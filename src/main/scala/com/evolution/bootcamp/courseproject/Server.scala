@@ -11,7 +11,7 @@ import com.evolution.bootcamp.courseproject.Protocol.{
   ToClient,
   WarnMessage
 }
-import fs2.concurrent.Queue
+import fs2.concurrent.{Queue, Topic}
 import fs2.{Pipe, Stream}
 import io.circe._
 import io.circe.generic.semiauto._
@@ -62,13 +62,12 @@ object Server extends IOApp {
   val defaultScores: Long = 100
 
   def roulette(game: Game,
-               generalQueue: Queue[IO, WebSocketFrame],
+               topic: Topic[IO, WebSocketFrame],
                cacheOfPlayers: Cache[IO, UUID, Player],
                cacheOfResults: Cache[IO, UUID, Result]): HttpRoutes[IO] =
     HttpRoutes.of[IO] {
       case req @ GET -> Root / "roulette" =>
-        def echoPipe(queue: Queue[IO, WebSocketFrame],
-                     id: UUID): Pipe[IO, WebSocketFrame, WebSocketFrame] = {
+        def echoPipe(id: UUID): Pipe[IO, WebSocketFrame, WebSocketFrame] = {
           _.collect {
             case WebSocketFrame.Text(message, _) => {
               val json = decode[FromClient](message) match {
@@ -92,8 +91,8 @@ object Server extends IOApp {
           }.evalMap(text => text)
         }
 
-        def generalPipe(queue: Queue[IO, WebSocketFrame],
-                        id: UUID,
+        def generalPipe(
+          id: UUID,
         ): Pipe[IO, WebSocketFrame, WebSocketFrame] = {
           _.collect {
             case WebSocketFrame.Text(message, _) =>
@@ -157,8 +156,8 @@ object Server extends IOApp {
           id = UUID.randomUUID()
           _ <- cacheOfPlayers.put(id, Player(defaultScores, queue))
           combinedStream = Stream(
-            queue.dequeue.through(echoPipe(queue, id)),
-            generalQueue.dequeue.through(generalPipe(queue, id))
+            queue.dequeue.through(echoPipe(id)),
+            topic.subscribe(100).through(generalPipe(id))
           ).parJoinUnbounded
           response <- WebSocketBuilder[IO]
             .build(receive = queue.enqueue, send = combinedStream)
@@ -278,23 +277,24 @@ object Server extends IOApp {
   }
 
   private def webSocketApp(game: Game,
-                           queue: Queue[IO, WebSocketFrame],
+                           topic: Topic[IO, WebSocketFrame],
                            cacheOfPlayers: Cache[IO, UUID, Player],
                            cacheOfResults: Cache[IO, UUID, Result]) = {
-    roulette(game, queue, cacheOfPlayers, cacheOfResults)
+    roulette(game, topic, cacheOfPlayers, cacheOfResults)
   }.orNotFound
 
   override def run(args: List[String]): IO[ExitCode] = {
     for {
       cacheOfPlayers <- Cache.of[IO, UUID, Player](3600.seconds, 100.seconds)
       cacheOfResults <- Cache.of[IO, UUID, Result](20.seconds, 5.seconds)
-      queue <- Queue.unbounded[IO, WebSocketFrame]
-      game <- Game.of(cacheOfPlayers, cacheOfResults, queue)
+      initialMessage = PhaseUpdate(First, "Game has started").asJson.toString
+      topic <- Topic[IO, WebSocketFrame](WebSocketFrame.Text(initialMessage))
+      game <- Game.of(cacheOfPlayers, cacheOfResults, topic)
       exitCode <- {
         BlazeServerBuilder[IO](ExecutionContext.global)
           .bindHttp(port = 9002, host = "localhost")
           .withHttpApp(
-            webSocketApp(game, queue, cacheOfPlayers, cacheOfResults)
+            webSocketApp(game, topic, cacheOfPlayers, cacheOfResults)
           )
           .serve
           .compile
