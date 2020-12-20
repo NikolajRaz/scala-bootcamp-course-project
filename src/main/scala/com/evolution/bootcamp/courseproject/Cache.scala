@@ -10,6 +10,10 @@ import scala.concurrent.duration._
 trait Cache[F[_], K, V] {
   def get(key: K): F[Option[V]]
 
+  def getCount: F[Int]
+
+  def getByIndex(index: Int): F[Option[K]]
+
   def put(key: K, value: V): F[Unit]
 
   def update(key: K, value: V): F[Unit]
@@ -23,6 +27,17 @@ class RefCache[F[_]: Clock: Monad, K, V](state: Ref[F, Map[K, (Long, V)]],
 
   def get(key: K): F[Option[V]] =
     state.get.map(v => v.get(key).map { case (_, v) => v })
+
+  def getCount: F[Int] =
+    for {
+      values <- state.get
+      result = values.size
+    } yield result
+
+  def getByIndex(index: Int): F[Option[K]] =
+    state.get.map(v => {
+      v.keySet.toList.lift(index)
+    })
 
   def put(key: K, value: V): F[Unit] =
     Clock[F]

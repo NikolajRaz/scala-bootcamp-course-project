@@ -1,11 +1,38 @@
 package com.evolution.bootcamp.courseproject
 
-final case class Bet(betType: String, numbers: List[Number])
+final case class Bet(betType: String,
+                     numbers: List[Number],
+                     placedScores: Long) {
+  def getResult(number: Number): Result = {
+    val result = if (numbers.contains(number)) {
+      betType match {
+        case "Si" => placedScores * 36
+        case "Sp" => placedScores * 18
+        case "St" => placedScores * 12
+        case "Sq" => placedScores * 9
+        case "DS" => placedScores * 6
+        case "Ba" => placedScores * 6
+        case "FF" => placedScores * 9
+        case "Re" => placedScores * 2
+        case "Bl" => placedScores * 2
+        case "Ev" => placedScores * 2
+        case "Od" => placedScores * 2
+        case "Sm" => placedScores * 2
+        case "Bi" => placedScores * 2
+        case "Do" => placedScores * 3
+        case "Ro" => placedScores * 3
+      }
+    } else 0
+    Result(result)
+  }
+}
 
 object Bet {
   val streets = List(1, 4, 7, 10, 13, 16, 19, 22, 25, 28, 31, 34)
 
-  def of(betType: String, numbers: List[Number]): Either[String, Bet] = {
+  def of(betType: String,
+         numbers: List[Number],
+         placedScores: Long): Either[String, Bet] = {
     val validNumbers: Option[List[Number]] = betType match {
       case "Si" => single(numbers)
       case "Sp" => split(numbers)
@@ -26,8 +53,10 @@ object Bet {
     }
 
     validNumbers match {
-      case Some(value) => Right(Bet(betType, value))
-      case None        => Left("Wrong bet format")
+      case Some(value) if placedScores > 0 =>
+        Right(Bet(betType, value, placedScores))
+      case Some(_) => Left("Can't place bet that is lower than zero")
+      case None    => Left("Wrong bet format")
     }
   }
 

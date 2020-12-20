@@ -4,86 +4,94 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
 class BetSpec extends AnyFlatSpec with Matchers {
+  val redValues = Number.redValues.map(x => Number(x))
+  val blackValues = Number.blackValues.map(x => Number(x))
+  val evenValues = (2 to 36 by 2).toList.map(x => Number(x))
+  val oddValues = (1 to 36 by 2).toList.map(x => Number(x))
+  val dozen = (1 to 12).toList.map(x => Number(x))
+  val row = (2 to 35 by 3).toList.map(x => Number(x))
+
   it should "return correct results for single" in {
-    Bet.of("Si", List(Number(25))) shouldEqual Right(
-      Bet("Si", List(Number(25)))
+    Bet.of("Si", List(Number(25)), 1) shouldEqual Right(
+      Bet("Si", List(Number(25)), 1)
     )
-    Bet.of("Si", List.empty) shouldEqual Left("Wrong bet format")
-    Bet.of("Si", List(Number(25), Number(26))) shouldEqual Left(
+    Bet.of("Si", List.empty, 1) shouldEqual Left("Wrong bet format")
+    Bet.of("Si", List(Number(25), Number(26)), 1) shouldEqual Left(
       "Wrong bet format"
     )
   }
 
   it should "return correct results for split" in {
-    Bet.of("Sp", List(Number(25))) shouldEqual Left("Wrong bet format")
-    Bet.of("Sp", List(Number(25), Number(35))) shouldEqual Left(
+    Bet.of("Sp", List(Number(25)), 1) shouldEqual Left("Wrong bet format")
+    Bet.of("Sp", List(Number(25), Number(35)), 1) shouldEqual Left(
       "Wrong bet format"
     )
-    Bet.of("Sp", List.empty) shouldEqual Left("Wrong bet format")
-    Bet.of("Sp", List(Number(25), Number(26))) shouldEqual Right(
-      Bet("Sp", List(Number(25), Number(26)))
+    Bet.of("Sp", List.empty, 1) shouldEqual Left("Wrong bet format")
+    Bet.of("Sp", List(Number(25), Number(26)), 1) shouldEqual Right(
+      Bet("Sp", List(Number(25), Number(26)), 1)
     )
-    Bet.of("Sp", List(Number(25), Number(28))) shouldEqual Right(
-      Bet("Sp", List(Number(25), Number(28)))
+    Bet.of("Sp", List(Number(25), Number(28)), 1) shouldEqual Right(
+      Bet("Sp", List(Number(25), Number(28)), 1)
     )
   }
 
   it should "return correct results for street" in {
-    Bet.of("St", List(Number(7))) shouldEqual Right(
-      Bet("St", List(Number(7), Number(8), Number(9)))
+    Bet.of("St", List(Number(7)), 1) shouldEqual Right(
+      Bet("St", List(Number(7), Number(8), Number(9)), 1)
     )
-    Bet.of("St", List(Number(8))) shouldEqual Left("Wrong bet format")
-    Bet.of("St", List.empty) shouldEqual Left("Wrong bet format")
-    Bet.of("St", List(Number(25), Number(26))) shouldEqual Left(
+    Bet.of("St", List(Number(8)), 1) shouldEqual Left("Wrong bet format")
+    Bet.of("St", List.empty, 1) shouldEqual Left("Wrong bet format")
+    Bet.of("St", List(Number(25), Number(26)), 1) shouldEqual Left(
       "Wrong bet format"
     )
   }
 
   it should "return correct results for square" in {
-    Bet.of("Sq", List(Number(30), Number(29), Number(32), Number(33))) shouldEqual Right(
-      Bet("Sq", List(Number(30), Number(29), Number(32), Number(33)))
+    Bet.of("Sq", List(Number(30), Number(29), Number(32), Number(33)), 1) shouldEqual Right(
+      Bet("Sq", List(Number(30), Number(29), Number(32), Number(33)), 1)
     )
-    Bet.of("Sq", List(Number(25))) shouldEqual Left("Wrong bet format")
-    Bet.of("Sq", List(Number(25), Number(35), Number(29), Number(33))) shouldEqual Left(
+    Bet.of("Sq", List(Number(25)), 1) shouldEqual Left("Wrong bet format")
+    Bet.of("Sq", List(Number(25), Number(35), Number(29), Number(33)), 1) shouldEqual Left(
       "Wrong bet format"
     )
-    Bet.of("Sq", List.empty) shouldEqual Left("Wrong bet format")
+    Bet.of("Sq", List.empty, 1) shouldEqual Left("Wrong bet format")
   }
 
   it should "return correct results for double street" in {
-    Bet.of("DS", List(Number(1))) shouldEqual Right(
+    Bet.of("DS", List(Number(1)), 1) shouldEqual Right(
       Bet(
         "DS",
-        List(Number(1), Number(2), Number(3), Number(4), Number(5), Number(6))
+        List(Number(1), Number(2), Number(3), Number(4), Number(5), Number(6)),
+        1
       )
     )
-    Bet.of("DS", List(Number(34))) shouldEqual Left("Wrong bet format")
-    Bet.of("DS", List(Number(8))) shouldEqual Left("Wrong bet format")
-    Bet.of("DS", List.empty) shouldEqual Left("Wrong bet format")
-    Bet.of("DS", List(Number(25), Number(26))) shouldEqual Left(
+    Bet.of("DS", List(Number(34)), 1) shouldEqual Left("Wrong bet format")
+    Bet.of("DS", List(Number(8)), 1) shouldEqual Left("Wrong bet format")
+    Bet.of("DS", List.empty, 1) shouldEqual Left("Wrong bet format")
+    Bet.of("DS", List(Number(25), Number(26)), 1) shouldEqual Left(
       "Wrong bet format"
     )
   }
 
   it should "return correct results for basket" in {
-    Bet.of("Ba", List(Number(1))) shouldEqual Right(
-      Bet("Ba", List(Number(0), Number(1), Number(2)))
+    Bet.of("Ba", List(Number(1)), 1) shouldEqual Right(
+      Bet("Ba", List(Number(0), Number(1), Number(2)), 1)
     )
-    Bet.of("Ba", List(Number(3))) shouldEqual Right(
-      Bet("Ba", List(Number(0), Number(2), Number(3)))
+    Bet.of("Ba", List(Number(3)), 1) shouldEqual Right(
+      Bet("Ba", List(Number(0), Number(2), Number(3)), 1)
     )
-    Bet.of("Ba", List(Number(8))) shouldEqual Left("Wrong bet format")
+    Bet.of("Ba", List(Number(8)), 1) shouldEqual Left("Wrong bet format")
   }
 
   it should "return correct results for first four" in {
-    Bet.of("FF", List.empty) shouldEqual Right(
-      Bet("FF", List(Number(0), Number(1), Number(2), Number(3)))
+    Bet.of("FF", List.empty, 1) shouldEqual Right(
+      Bet("FF", List(Number(0), Number(1), Number(2), Number(3)), 1)
     )
-    Bet.of("FF", List(Number(1))) shouldEqual Left("Wrong bet format")
+    Bet.of("FF", List(Number(1)), 1) shouldEqual Left("Wrong bet format")
   }
 
   it should "return correct results for red" in {
-    Bet.of("Re", List.empty) shouldEqual Right(
+    Bet.of("Re", List.empty, 1) shouldEqual Right(
       Bet(
         "Re",
         List(
@@ -105,14 +113,15 @@ class BetSpec extends AnyFlatSpec with Matchers {
           Number(32),
           Number(34),
           Number(36)
-        )
+        ),
+        1
       )
     )
-    Bet.of("Re", List(Number(1))) shouldEqual Left("Wrong bet format")
+    Bet.of("Re", List(Number(1)), 1) shouldEqual Left("Wrong bet format")
   }
 
   it should "return correct results for black" in {
-    Bet.of("Bl", List.empty) shouldEqual Right(
+    Bet.of("Bl", List.empty, 1) shouldEqual Right(
       Bet(
         "Bl",
         List(
@@ -134,14 +143,15 @@ class BetSpec extends AnyFlatSpec with Matchers {
           Number(31),
           Number(33),
           Number(35)
-        )
+        ),
+        1
       )
     )
-    Bet.of("Bl", List(Number(1))) shouldEqual Left("Wrong bet format")
+    Bet.of("Bl", List(Number(1)), 1) shouldEqual Left("Wrong bet format")
   }
 
   it should "return correct results for even" in {
-    Bet.of("Ev", List.empty) shouldEqual Right(
+    Bet.of("Ev", List.empty, 1) shouldEqual Right(
       Bet(
         "Ev",
         List(
@@ -163,14 +173,15 @@ class BetSpec extends AnyFlatSpec with Matchers {
           Number(32),
           Number(34),
           Number(36)
-        )
+        ),
+        1
       )
     )
-    Bet.of("Ev", List(Number(1))) shouldEqual Left("Wrong bet format")
+    Bet.of("Ev", List(Number(1)), 1) shouldEqual Left("Wrong bet format")
   }
 
   it should "return correct results for odd" in {
-    Bet.of("Od", List.empty) shouldEqual Right(
+    Bet.of("Od", List.empty, 1) shouldEqual Right(
       Bet(
         "Od",
         List(
@@ -192,14 +203,15 @@ class BetSpec extends AnyFlatSpec with Matchers {
           Number(31),
           Number(33),
           Number(35)
-        )
+        ),
+        1
       )
     )
-    Bet.of("Od", List(Number(1))) shouldEqual Left("Wrong bet format")
+    Bet.of("Od", List(Number(1)), 1) shouldEqual Left("Wrong bet format")
   }
 
   it should "return correct results for small" in {
-    Bet.of("Sm", List.empty) shouldEqual Right(
+    Bet.of("Sm", List.empty, 1) shouldEqual Right(
       Bet(
         "Sm",
         List(
@@ -221,14 +233,15 @@ class BetSpec extends AnyFlatSpec with Matchers {
           Number(16),
           Number(17),
           Number(18)
-        )
+        ),
+        1
       )
     )
-    Bet.of("Sm", List(Number(1))) shouldEqual Left("Wrong bet format")
+    Bet.of("Sm", List(Number(1)), 1) shouldEqual Left("Wrong bet format")
   }
 
   it should "return correct results for big" in {
-    Bet.of("Bi", List.empty) shouldEqual Right(
+    Bet.of("Bi", List.empty, 1) shouldEqual Right(
       Bet(
         "Bi",
         List(
@@ -250,14 +263,15 @@ class BetSpec extends AnyFlatSpec with Matchers {
           Number(34),
           Number(35),
           Number(36)
-        )
+        ),
+        1
       )
     )
-    Bet.of("Bi", List(Number(1))) shouldEqual Left("Wrong bet format")
+    Bet.of("Bi", List(Number(1)), 1) shouldEqual Left("Wrong bet format")
   }
 
   it should "return correct results for dozens" in {
-    Bet.of("Do", List(Number(1))) shouldEqual Right(
+    Bet.of("Do", List(Number(1)), 1) shouldEqual Right(
       Bet(
         "Do",
         List(
@@ -273,10 +287,11 @@ class BetSpec extends AnyFlatSpec with Matchers {
           Number(10),
           Number(11),
           Number(12),
-        )
+        ),
+        1
       )
     )
-    Bet.of("Do", List(Number(13))) shouldEqual Right(
+    Bet.of("Do", List(Number(13)), 1) shouldEqual Right(
       Bet(
         "Do",
         List(
@@ -292,10 +307,11 @@ class BetSpec extends AnyFlatSpec with Matchers {
           Number(22),
           Number(23),
           Number(24)
-        )
+        ),
+        1
       )
     )
-    Bet.of("Do", List(Number(25))) shouldEqual Right(
+    Bet.of("Do", List(Number(25)), 1) shouldEqual Right(
       Bet(
         "Do",
         List(
@@ -311,14 +327,15 @@ class BetSpec extends AnyFlatSpec with Matchers {
           Number(34),
           Number(35),
           Number(36)
-        )
+        ),
+        1
       )
     )
-    Bet.of("Do", List(Number(2))) shouldEqual Left("Wrong bet format")
+    Bet.of("Do", List(Number(2)), 1) shouldEqual Left("Wrong bet format")
   }
 
   it should "return correct results for rows" in {
-    Bet.of("Ro", List(Number(34))) shouldEqual Right(
+    Bet.of("Ro", List(Number(34)), 1) shouldEqual Right(
       Bet(
         "Ro",
         List(
@@ -334,10 +351,11 @@ class BetSpec extends AnyFlatSpec with Matchers {
           Number(28),
           Number(31),
           Number(34),
-        )
+        ),
+        1
       )
     )
-    Bet.of("Ro", List(Number(35))) shouldEqual Right(
+    Bet.of("Ro", List(Number(35)), 1) shouldEqual Right(
       Bet(
         "Ro",
         List(
@@ -353,10 +371,11 @@ class BetSpec extends AnyFlatSpec with Matchers {
           Number(29),
           Number(32),
           Number(35)
-        )
+        ),
+        1
       )
     )
-    Bet.of("Ro", List(Number(36))) shouldEqual Right(
+    Bet.of("Ro", List(Number(36)), 1) shouldEqual Right(
       Bet(
         "Ro",
         List(
@@ -372,9 +391,41 @@ class BetSpec extends AnyFlatSpec with Matchers {
           Number(30),
           Number(33),
           Number(36)
-        )
+        ),
+        1
       )
     )
-    Bet.of("Ro", List(Number(1))) shouldEqual Left("Wrong bet format")
+    Bet.of("Ro", List(Number(1)), 1) shouldEqual Left("Wrong bet format")
+  }
+
+  it should "return correct result" in {
+    Bet("Si", List(Number(34)), 1).getResult(Number(34)) shouldEqual Result(36)
+    Bet("Sp", List(Number(33), Number(36)), 1)
+      .getResult(Number(33)) shouldEqual Result(18)
+    Bet("St", List(Number(34), Number(35), Number(36)), 1)
+      .getResult(Number(35)) shouldEqual Result(12)
+    Bet("Sq", List(Number(26), Number(29), Number(32), Number(35)), 1)
+      .getResult(Number(32)) shouldEqual Result(9)
+    Bet(
+      "DS",
+      List(
+        Number(31),
+        Number(32),
+        Number(33),
+        Number(34),
+        Number(35),
+        Number(36)
+      ),
+      1
+    ).getResult(Number(34)) shouldEqual Result(6)
+    Bet("Ba", List(Number(0), Number(2), Number(3)), 1)
+      .getResult(Number(2)) shouldEqual Result(6)
+    Bet("FF", List(Number(0), Number(1), Number(2), Number(3)), 1)
+      .getResult(Number(2)) shouldEqual Result(9)
+    Bet("Ev", evenValues, 1).getResult(Number(2)) shouldEqual Result(2)
+    Bet("Od", oddValues, 1).getResult(Number(1)) shouldEqual Result(2)
+    Bet("Re", redValues, 1).getResult(Number(34)) shouldEqual Result(2)
+    Bet("Do", dozen, 1).getResult(Number(12)) shouldEqual Result(3)
+    Bet("Ro", row, 1).getResult(Number(35)) shouldEqual Result(3)
   }
 }
