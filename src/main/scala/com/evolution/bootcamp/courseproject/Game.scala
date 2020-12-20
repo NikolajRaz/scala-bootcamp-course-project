@@ -56,6 +56,7 @@ object Game {
           case (expirationTime, value, _)
               if curTime >= expirationTime - secondPhaseDuration.toMillis - thirdPhaseDuration.toMillis =>
             (expirationTime, value, Second)
+          //Not changing game phase
           case _ => curState
         }
         _ <- newState match {

@@ -29,12 +29,13 @@ import scala.concurrent.ExecutionContext
 
 //websocat "ws://127.0.0.1:9002/roulette"
 //{"placedScores": "10", "betType": "Re", "placedNumbers": []}
+//{"placedScores": "10", "betType": "Bl", "placedNumbers": []}
 
 object Protocol {
   final case class FromClient(placedScores: Long,
                               betType: String,
                               placedNumbers: List[Int])
-  final case class ToClient(scoresLeft: Long, message: String)
+  final case class ToClient(phase: Phase, scoresLeft: Long, message: String)
   final case class PhaseUpdate(phase: Phase, message: String)
   final case class ResultMessage(scoresLeft: Long,
                                  scoresWon: Long,
@@ -67,6 +68,7 @@ object Server extends IOApp {
                cacheOfResults: Cache[IO, UUID, Result]): HttpRoutes[IO] =
     HttpRoutes.of[IO] {
       case req @ GET -> Root / "roulette" =>
+        //Here we process client messages
         def echoPipe(id: UUID): Pipe[IO, WebSocketFrame, WebSocketFrame] = {
           _.collect {
             case WebSocketFrame.Text(message, _) => {
@@ -91,6 +93,7 @@ object Server extends IOApp {
           }.evalMap(text => text)
         }
 
+        //Here we process messages from the Game, and the sending it to the client
         def generalPipe(
           id: UUID,
         ): Pipe[IO, WebSocketFrame, WebSocketFrame] = {
@@ -104,13 +107,29 @@ object Server extends IOApp {
                         player <- cacheOfPlayers.get(id)
                         result = player match {
                           case Some(value) =>
-                            ToClient(value.scores, "Please make your bets!").asJson.toString
+                            ToClient(
+                              First,
+                              value.scores,
+                              "Please make your bets!"
+                            ).asJson.toString
                           case None =>
                             ErrorMessage("Error: Can't find a player").asJson.toString
                         }
                       } yield result
                     case Second =>
-                      IO(WarnMessage("Calculating results...").asJson.toString)
+                      for {
+                        player <- cacheOfPlayers.get(id)
+                        result = player match {
+                          case Some(value) =>
+                            ToClient(
+                              Second,
+                              value.scores,
+                              "Calculating results..."
+                            ).asJson.toString
+                          case None =>
+                            ErrorMessage("Error: Can't find a player").asJson.toString
+                        }
+                      } yield result
                     case Third =>
                       for {
                         player <- cacheOfPlayers.get(id)
@@ -236,6 +255,8 @@ object Server extends IOApp {
                 p.connection
               )
             )
+            betType <- betTypeParser(bet.betType)
+            numbers = bet.numbers.map(x => x.value).toString
             status <- playerBets match {
               case Some(s) =>
                 for {
@@ -244,16 +265,18 @@ object Server extends IOApp {
                     Result(s.winningScores + currentBet.winningScores)
                   )
                   json = ToClient(
+                    First,
                     p.scores - placedScores,
-                    "Bet successfully placed"
+                    s"Bet - $betType, successfully placed on: $numbers"
                   ).asJson.toString
                 } yield json
               case None =>
                 for {
                   _ <- cacheOfResults.put(id, currentBet)
                   json = ToClient(
+                    First,
                     p.scores - placedScores,
-                    "Bet successfully placed"
+                    s"Bet - $betType, successfully placed on: $numbers"
                   ).asJson.toString
                 } yield json
             }
@@ -274,6 +297,27 @@ object Server extends IOApp {
       case (Nil, ints)  => Right(for (Right(i) <- ints) yield i)
       case (strings, _) => Left(for (Left(s) <- strings) yield s)
     }
+  }
+
+  private def betTypeParser(betType: String): IO[String] = {
+    IO(betType match {
+      case "Si" => "Single"
+      case "Sp" => "Split"
+      case "St" => "Street"
+      case "Sq" => "Square"
+      case "DS" => "Double street"
+      case "Ba" => "Basket"
+      case "FF" => "First four"
+      case "Re" => "Red"
+      case "Bl" => "Black"
+      case "Ev" => "Even"
+      case "Od" => "Odd"
+      case "Sm" => "Small"
+      case "Bi" => "Big"
+      case "Do" => "Dozen"
+      case "Ro" => "Row"
+      case _    => "Incorrect bet type"
+    })
   }
 
   private def webSocketApp(game: Game,

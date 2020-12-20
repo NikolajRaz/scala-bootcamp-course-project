@@ -1,8 +1,7 @@
 package com.evolution.bootcamp.courseproject
 
-import org.scalatest.freespec.AnyFreeSpec
+import akka.http.scaladsl.testkit.ScalatestRouteTest
+import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
-class ServerSpec extends AnyFreeSpec with Matchers {
-  //пока тут пусто
-}
+class ServerSpec extends AnyFlatSpec with Matchers with ScalatestRouteTest {}
