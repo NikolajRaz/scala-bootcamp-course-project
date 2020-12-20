@@ -4,6 +4,13 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
 class BetSpec extends AnyFlatSpec with Matchers {
+  val redValues = Number.redValues.map(x => Number(x))
+  val blackValues = Number.blackValues.map(x => Number(x))
+  val evenValues = (2 to 36 by 2).toList.map(x => Number(x))
+  val oddValues = (1 to 36 by 2).toList.map(x => Number(x))
+  val dozen = (1 to 12).toList.map(x => Number(x))
+  val row = (2 to 35 by 3).toList.map(x => Number(x))
+
   it should "return correct results for single" in {
     Bet.of("Si", List(Number(25)), 1) shouldEqual Right(
       Bet("Si", List(Number(25)), 1)
@@ -389,5 +396,36 @@ class BetSpec extends AnyFlatSpec with Matchers {
       )
     )
     Bet.of("Ro", List(Number(1)), 1) shouldEqual Left("Wrong bet format")
+  }
+
+  it should "return correct result" in {
+    Bet("Si", List(Number(34)), 1).getResult(Number(34)) shouldEqual Result(36)
+    Bet("Sp", List(Number(33), Number(36)), 1)
+      .getResult(Number(33)) shouldEqual Result(18)
+    Bet("St", List(Number(34), Number(35), Number(36)), 1)
+      .getResult(Number(35)) shouldEqual Result(12)
+    Bet("Sq", List(Number(26), Number(29), Number(32), Number(35)), 1)
+      .getResult(Number(32)) shouldEqual Result(9)
+    Bet(
+      "DS",
+      List(
+        Number(31),
+        Number(32),
+        Number(33),
+        Number(34),
+        Number(35),
+        Number(36)
+      ),
+      1
+    ).getResult(Number(34)) shouldEqual Result(6)
+    Bet("Ba", List(Number(0), Number(2), Number(3)), 1)
+      .getResult(Number(2)) shouldEqual Result(6)
+    Bet("FF", List(Number(0), Number(1), Number(2), Number(3)), 1)
+      .getResult(Number(2)) shouldEqual Result(9)
+    Bet("Ev", evenValues, 1).getResult(Number(2)) shouldEqual Result(2)
+    Bet("Od", oddValues, 1).getResult(Number(1)) shouldEqual Result(2)
+    Bet("Re", redValues, 1).getResult(Number(34)) shouldEqual Result(2)
+    Bet("Do", dozen, 1).getResult(Number(12)) shouldEqual Result(3)
+    Bet("Ro", row, 1).getResult(Number(35)) shouldEqual Result(3)
   }
 }
