@@ -399,7 +399,7 @@ class BetSpec extends AnyFlatSpec with Matchers {
     Bet.of("Ro", List(Number(1)), 1) shouldEqual Left("Wrong bet format")
   }
 
-  it should "return correct result" in {
+  it should "return correct result for getResult function" in {
     Bet("Si", List(Number(34)), 1).getResult(Number(34)) shouldEqual 36
     Bet("Sp", List(Number(33), Number(36)), 1)
       .getResult(Number(33)) shouldEqual 18
@@ -425,7 +425,7 @@ class BetSpec extends AnyFlatSpec with Matchers {
       .getResult(Number(2)) shouldEqual 9
     models.Bet("Ev", evenValues, 1).getResult(Number(2)) shouldEqual 2
     models.Bet("Od", oddValues, 1).getResult(Number(1)) shouldEqual 2
-    Bet("Re", redValues, 1).getResult(Number(34)) shouldEqual 3
+    Bet("Re", redValues, 1).getResult(Number(34)) shouldEqual 2
     models.Bet("Do", dozen, 1).getResult(Number(12)) shouldEqual 3
     models.Bet("Ro", row, 1).getResult(Number(35)) shouldEqual 3
   }

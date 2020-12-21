@@ -1,12 +1,12 @@
 package com.evolution.bootcamp.courseproject
-
 import akka.{Done, NotUsed}
 import akka.actor.ActorSystem
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.model.StatusCodes
 import akka.http.scaladsl.model.ws.{Message, TextMessage, WebSocketRequest}
 import akka.stream.scaladsl.{Flow, Keep, Sink, Source}
-import com.evolution.bootcamp.courseproject.models.BETS_OPEN
+import akka.stream.OverflowStrategy
+import com.evolution.bootcamp.courseproject.models.{BETS_OPEN, PLACE_BET}
 import com.evolution.bootcamp.courseproject.models.Messages.{
   ErrorMessage,
   FromClient,
@@ -51,20 +51,15 @@ object Client {
                 .message
             case x => x
           }
-          println(s"Received text message: [${decoded}]")
+          println(s"Server: [${decoded}]")
         })
         .to(Sink.ignore)
 
     val helloSource =
-      Source.tick(
-        0.seconds,
-        10.seconds,
-        tick = TextMessage.Strict(
-          FromClient(true, 10, "Re", List.empty).asJson.toString
-        )
-      )
+      Source
+        .actorRef[TextMessage.Strict](bufferSize = 10, OverflowStrategy.fail)
 
-    val ((webs, upgradeResponse), closed) =
+    val ((ws, upgradeResponse), closed) =
       helloSource
         .viaMat(webSocketFlow)(Keep.both)
         .toMat(messageSink)(Keep.both)
@@ -77,7 +72,16 @@ object Client {
       }
     }
 
-    connected.onComplete(println)
+    Thread.sleep(1.seconds.toMillis)
+    println("Client: Placing bet on red values")
+    ws ! TextMessage.Strict(
+      FromClient(PLACE_BET, 10, "Re", List.empty).asJson.toString
+    )
+    println("Client: Placing bet on single 1")
+    ws ! TextMessage.Strict(
+      FromClient(PLACE_BET, 10, "Si", List(1)).asJson.toString
+    )
+    Thread.sleep(10.seconds.toMillis)
   }
 
   private def decodeJsonMessage[V](

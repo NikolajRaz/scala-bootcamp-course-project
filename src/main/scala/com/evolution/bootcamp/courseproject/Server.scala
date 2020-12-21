@@ -10,8 +10,10 @@ import com.evolution.bootcamp.courseproject.models.{
   Black,
   Number,
   Phase,
+  PLACE_BET,
   Player,
   Red,
+  REMOVE_BET,
   RESULT_ANNOUNCED
 }
 import com.evolution.bootcamp.courseproject.models.Messages.{
@@ -38,11 +40,11 @@ import scala.concurrent.duration._
 import scala.concurrent.ExecutionContext
 
 //websocat "ws://127.0.0.1:9002/roulette"
-//{"place": true, "placedScores": "10", "betType": "Re", "placedNumbers": []}
-//{"place": false, "placedScores": "10", "betType": "Re", "placedNumbers": []}
-//{"place": "true", "placedScores": "10", "betType": "Ev", "placedNumbers": []}
-//{"place": "true", "placedScores": "10", "betType": "Si", "placedNumbers": [1]}
-//{"place": "true", "placedScores": "10", "betType": "Bl", "placedNumbers": []}
+//{"place": { "PLACE_BET": {}}, "placedScores": "10", "betType": "Re", "placedNumbers": []}
+//{"place": { "REMOVE_BET": {}}, "placedScores": "10", "betType": "Re", "placedNumbers": []}
+//{"place": { "PLACE_BET": {}}, "placedScores": "10", "betType": "Ev", "placedNumbers": []}
+//{"place": { "PLACE_BET": {}}, "placedScores": "10", "betType": "Si", "placedNumbers": [1]}
+//{"place": { "PLACE_BET": {}}, "placedScores": "10", "betType": "Bl", "placedNumbers": []}
 
 object Server extends IOApp {
   val defaultScores: Long = 100
@@ -119,8 +121,10 @@ object Server extends IOApp {
             case Right(x) =>
               Bet.of(fromClient.betType, x, fromClient.placedScores) match {
                 case Right(value) =>
-                  if (fromClient.place) checkBalance(id, value, fromClient)
-                  else checkBet(id, value, fromClient)
+                  fromClient.place match {
+                    case PLACE_BET  => checkBalance(id, value, fromClient)
+                    case REMOVE_BET => checkBet(id, value, fromClient)
+                  }
                 case Left(error) => IO(ErrorMessage(error).asJson.toString)
               }
             case _ =>
