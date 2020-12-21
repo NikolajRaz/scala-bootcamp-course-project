@@ -6,7 +6,7 @@ import cats.effect.{ExitCode, IO, IOApp}
 import com.evolution.bootcamp.courseproject.models.{
   Bet,
   BETS_CLOSED,
-  BETS_OPEN,
+  BETS_OPENED,
   Black,
   Number,
   Phase,
@@ -38,13 +38,6 @@ import org.http4s.websocket.WebSocketFrame
 
 import scala.concurrent.duration._
 import scala.concurrent.ExecutionContext
-
-//websocat "ws://127.0.0.1:9002/roulette"
-//{"place": { "PLACE_BET": {}}, "placedScores": "10", "betType": "Re", "placedNumbers": []}
-//{"place": { "REMOVE_BET": {}}, "placedScores": "10", "betType": "Re", "placedNumbers": []}
-//{"place": { "PLACE_BET": {}}, "placedScores": "10", "betType": "Ev", "placedNumbers": []}
-//{"place": { "PLACE_BET": {}}, "placedScores": "10", "betType": "Si", "placedNumbers": [1]}
-//{"place": { "PLACE_BET": {}}, "placedScores": "10", "betType": "Bl", "placedNumbers": []}
 
 object Server extends IOApp {
   val defaultScores: Long = 100
@@ -113,7 +106,7 @@ object Server extends IOApp {
     for {
       gamePhase <- game.getGamePhase
       result <- gamePhase match {
-        case BETS_OPEN =>
+        case BETS_OPENED =>
           toEitherList(
             fromClient.placedNumbers
               .map(x => Number.of(x))
@@ -121,7 +114,7 @@ object Server extends IOApp {
             case Right(x) =>
               Bet.of(fromClient.betType, x, fromClient.placedScores) match {
                 case Right(value) =>
-                  fromClient.place match {
+                  fromClient.requestType match {
                     case PLACE_BET  => checkBalance(id, value, fromClient)
                     case REMOVE_BET => checkBet(id, value, fromClient)
                   }
@@ -196,7 +189,7 @@ object Server extends IOApp {
             )
             message <- IO(
               ToClient(
-                BETS_OPEN,
+                BETS_OPENED,
                 player.scores + bet.placedScores,
                 "Bet removed"
               ).asJson.toString
@@ -235,7 +228,7 @@ object Server extends IOApp {
       numbers = bet.numbers.map(x => x.value).toString
       status <- IO(
         ToClient(
-          BETS_OPEN,
+          BETS_OPENED,
           player.scores - placedScores,
           s"Bet - $betType, successfully placed on: $numbers"
         ).asJson.toString
@@ -248,8 +241,8 @@ object Server extends IOApp {
     game: Game
   ): IO[String] = {
     phaseUpdate.phase match {
-      case BETS_OPEN =>
-        generateToClientMessage(id, BETS_OPEN, "Please make your bets!")
+      case BETS_OPENED =>
+        generateToClientMessage(id, BETS_OPENED, "Please make your bets!")
       case BETS_CLOSED =>
         generateToClientMessage(id, BETS_CLOSED, "Calculating results...")
       case RESULT_ANNOUNCED => generateResultMessage(id)
@@ -346,7 +339,7 @@ object Server extends IOApp {
   override def run(args: List[String]): IO[ExitCode] = {
     for {
       cacheOfPlayers <- Cache.of[IO, UUID, Player](3600.seconds, 100.seconds)
-      initialMessage = PhaseUpdate(BETS_OPEN, "Game has started").asJson.toString
+      initialMessage = PhaseUpdate(BETS_OPENED, "Game has started").asJson.toString
       topic <- Topic[IO, WebSocketFrame](WebSocketFrame.Text(initialMessage))
       game <- Game.of(cacheOfPlayers, topic)
       exitCode <- {

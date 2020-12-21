@@ -7,7 +7,7 @@ import cats.effect.concurrent.Ref
 import cats.syntax.all._
 import com.evolution.bootcamp.courseproject.models.{
   BETS_CLOSED,
-  BETS_OPEN,
+  BETS_OPENED,
   Number,
   Phase,
   Player,
@@ -54,7 +54,7 @@ object Game {
             (
               curTime + expiresIn.toMillis,
               Number(0 + rand.nextInt((36 - 0) + 1)),
-              BETS_OPEN
+              BETS_OPENED
             )
           //Going to the third phase
           case (expirationTime, value, _)
@@ -79,7 +79,7 @@ object Game {
       newGame <- Ref.of[IO, (Long, Number, Phase)](
         curTime + expiresIn.toMillis,
         Number(0 + rand.nextInt((36 - 0) + 1)),
-        BETS_OPEN
+        BETS_OPENED
       )
       _ <- C.start(expirationTimestamp(newGame).foreverM.void)
     } yield new RefGame(newGame, expiresIn)

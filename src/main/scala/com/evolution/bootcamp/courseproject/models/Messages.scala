@@ -5,7 +5,7 @@ import io.circe.generic.semiauto.{deriveDecoder, deriveEncoder}
 
 object Messages {
   sealed trait ClientMessages
-  final case class FromClient(place: Receive,
+  final case class FromClient(requestType: Request,
                               placedScores: Long,
                               betType: String,
                               placedNumbers: List[Int])
@@ -30,8 +30,8 @@ object Messages {
   implicit val resultMessageEncoder: Encoder[ResultMessage] = deriveEncoder
   implicit val phaseDecoder: Decoder[Phase] = deriveDecoder
   implicit val phaseEncoder: Encoder[Phase] = deriveEncoder
-  implicit val receiveDecoder: Decoder[Receive] = deriveDecoder
-  implicit val receiveEncoder: Encoder[Receive] = deriveEncoder
+  implicit val receiveDecoder: Decoder[Request] = deriveDecoder
+  implicit val receiveEncoder: Encoder[Request] = deriveEncoder
   implicit val phaseUpdateDecoder: Decoder[PhaseUpdate] = deriveDecoder
   implicit val phaseUpdateEncoder: Encoder[PhaseUpdate] = deriveEncoder
   implicit val errorUpdateDecoder: Decoder[ErrorMessage] = deriveDecoder

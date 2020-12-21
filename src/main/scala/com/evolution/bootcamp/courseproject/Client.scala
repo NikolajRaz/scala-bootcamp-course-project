@@ -6,7 +6,7 @@ import akka.http.scaladsl.model.StatusCodes
 import akka.http.scaladsl.model.ws.{Message, TextMessage, WebSocketRequest}
 import akka.stream.scaladsl.{Flow, Keep, Sink, Source}
 import akka.stream.OverflowStrategy
-import com.evolution.bootcamp.courseproject.models.{BETS_OPEN, PLACE_BET}
+import com.evolution.bootcamp.courseproject.models.{BETS_OPENED, PLACE_BET}
 import com.evolution.bootcamp.courseproject.models.Messages.{
   ErrorMessage,
   FromClient,
@@ -35,7 +35,7 @@ object Client {
             case x if decodeJsonMessage[ToClient](x).isDefined =>
               val received =
                 decodeJsonMessage[ToClient](x)
-                  .getOrElse(ToClient(BETS_OPEN, 0, ""))
+                  .getOrElse(ToClient(BETS_OPENED, 0, ""))
               received.message
             case x if decodeJsonMessage[ResultMessage](x).isDefined =>
               decodeJsonMessage[ResultMessage](x)
@@ -51,7 +51,7 @@ object Client {
                 .message
             case x => x
           }
-          println(s"Server: [${decoded}]")
+          println(s"Server: [$decoded]")
         })
         .to(Sink.ignore)
 
