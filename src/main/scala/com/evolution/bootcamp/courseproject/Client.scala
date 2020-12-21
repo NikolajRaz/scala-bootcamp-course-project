@@ -6,7 +6,7 @@ import akka.http.scaladsl.Http
 import akka.http.scaladsl.model.StatusCodes
 import akka.http.scaladsl.model.ws.{Message, TextMessage, WebSocketRequest}
 import akka.stream.scaladsl.{Flow, Keep, Sink, Source}
-import com.evolution.bootcamp.courseproject.Protocol.{
+import com.evolution.bootcamp.courseproject.Messages.{
   ErrorMessage,
   FromClient,
   ResultMessage,
@@ -33,7 +33,8 @@ object Client {
           val decoded = message.asTextMessage.getStrictText match {
             case x if decodeJsonMessage[ToClient](x).isDefined =>
               val received =
-                decodeJsonMessage[ToClient](x).getOrElse(ToClient(First, 0, ""))
+                decodeJsonMessage[ToClient](x)
+                  .getOrElse(ToClient(BETS_OPEN, 0, ""))
               received.message
             case x if decodeJsonMessage[ResultMessage](x).isDefined =>
               decodeJsonMessage[ResultMessage](x)

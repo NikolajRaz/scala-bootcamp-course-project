@@ -4,7 +4,7 @@ import java.util.UUID
 import cats.effect.{Clock, Concurrent, IO, Timer}
 import cats.effect.concurrent.Ref
 import cats.syntax.all._
-import com.evolution.bootcamp.courseproject.Protocol.PhaseUpdate
+import com.evolution.bootcamp.courseproject.Messages.PhaseUpdate
 import fs2.concurrent.Topic
 import io.circe.syntax._
 import org.http4s.websocket.WebSocketFrame
@@ -46,16 +46,16 @@ object Game {
             (
               curTime + expiresIn.toMillis,
               Number(0 + rand.nextInt((36 - 0) + 1)),
-              First
+              BETS_OPEN
             )
           //Going to the third phase
           case (expirationTime, value, _)
               if curTime >= expirationTime - thirdPhaseDuration.toMillis =>
-            (expirationTime, value, Third)
+            (expirationTime, value, RESULT_ANNOUNCED)
           //Going to the second phase
           case (expirationTime, value, _)
               if curTime >= expirationTime - secondPhaseDuration.toMillis - thirdPhaseDuration.toMillis =>
-            (expirationTime, value, Second)
+            (expirationTime, value, BETS_CLOSED)
           //Not changing game phase
           case _ => curState
         }
@@ -71,7 +71,7 @@ object Game {
       newGame <- Ref.of[IO, (Long, Number, Phase)](
         curTime + expiresIn.toMillis,
         Number(0 + rand.nextInt((36 - 0) + 1)),
-        First
+        BETS_OPEN
       )
       _ <- C.start(expirationTimestamp(newGame).foreverM.void)
     } yield new RefGame(newGame, expiresIn)

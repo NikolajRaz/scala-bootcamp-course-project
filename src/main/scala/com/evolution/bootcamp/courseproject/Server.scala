@@ -3,7 +3,7 @@ package com.evolution.bootcamp.courseproject
 import java.util.UUID
 
 import cats.effect.{ExitCode, IO, IOApp}
-import com.evolution.bootcamp.courseproject.Protocol.{
+import com.evolution.bootcamp.courseproject.Messages.{
   ErrorMessage,
   FromClient,
   PhaseUpdate,
@@ -11,10 +11,8 @@ import com.evolution.bootcamp.courseproject.Protocol.{
   ToClient,
   WarnMessage
 }
-import fs2.concurrent.{Queue, Topic}
 import fs2.{Pipe, Stream}
-import io.circe._
-import io.circe.generic.semiauto._
+import fs2.concurrent.{Queue, Topic}
 import io.circe.parser._
 import io.circe.syntax._
 import org.http4s._
@@ -30,34 +28,6 @@ import scala.concurrent.ExecutionContext
 //websocat "ws://127.0.0.1:9002/roulette"
 //{"placedScores": "10", "betType": "Re", "placedNumbers": []}
 //{"placedScores": "10", "betType": "Bl", "placedNumbers": []}
-
-object Protocol {
-  final case class FromClient(placedScores: Long,
-                              betType: String,
-                              placedNumbers: List[Int])
-  final case class ToClient(phase: Phase, scoresLeft: Long, message: String)
-  final case class PhaseUpdate(phase: Phase, message: String)
-  final case class ResultMessage(scoresLeft: Long,
-                                 scoresWon: Long,
-                                 message: String)
-  final case class WarnMessage(message: String)
-  final case class ErrorMessage(message: String)
-
-  implicit val fromClientDecoder: Decoder[FromClient] = deriveDecoder
-  implicit val fromClientEncoder: Encoder[FromClient] = deriveEncoder
-  implicit val toClientDecoder: Decoder[ToClient] = deriveDecoder
-  implicit val toClientEncoder: Encoder[ToClient] = deriveEncoder
-  implicit val resultMessageDecoder: Decoder[ResultMessage] = deriveDecoder
-  implicit val resultMessageEncoder: Encoder[ResultMessage] = deriveEncoder
-  implicit val phaseDecoder: Decoder[Phase] = deriveDecoder
-  implicit val phaseEncoder: Encoder[Phase] = deriveEncoder
-  implicit val phaseUpdateDecoder: Decoder[PhaseUpdate] = deriveDecoder
-  implicit val phaseUpdateEncoder: Encoder[PhaseUpdate] = deriveEncoder
-  implicit val errorUpdateDecoder: Decoder[ErrorMessage] = deriveDecoder
-  implicit val errorUpdateEncoder: Encoder[ErrorMessage] = deriveEncoder
-  implicit val warnMessageDecoder: Decoder[WarnMessage] = deriveDecoder
-  implicit val warnMessageEncoder: Encoder[WarnMessage] = deriveEncoder
-}
 
 object Server extends IOApp {
   val defaultScores: Long = 100
@@ -102,13 +72,13 @@ object Server extends IOApp {
               val json = decode[PhaseUpdate](message) match {
                 case Right(value) =>
                   value.phase match {
-                    case First =>
+                    case BETS_OPEN =>
                       for {
                         player <- cacheOfPlayers.get(id)
                         result = player match {
                           case Some(value) =>
                             ToClient(
-                              First,
+                              BETS_OPEN,
                               value.scores,
                               "Please make your bets!"
                             ).asJson.toString
@@ -116,13 +86,13 @@ object Server extends IOApp {
                             ErrorMessage("Error: Can't find a player").asJson.toString
                         }
                       } yield result
-                    case Second =>
+                    case BETS_CLOSED =>
                       for {
                         player <- cacheOfPlayers.get(id)
                         result = player match {
                           case Some(value) =>
                             ToClient(
-                              Second,
+                              BETS_CLOSED,
                               value.scores,
                               "Calculating results..."
                             ).asJson.toString
@@ -130,7 +100,7 @@ object Server extends IOApp {
                             ErrorMessage("Error: Can't find a player").asJson.toString
                         }
                       } yield result
-                    case Third =>
+                    case RESULT_ANNOUNCED =>
                       for {
                         player <- cacheOfPlayers.get(id)
                         playerResult <- cacheOfResults.get(id)
@@ -193,7 +163,7 @@ object Server extends IOApp {
     for {
       gamePhase <- game.getGamePhase
       result <- gamePhase match {
-        case First =>
+        case BETS_OPEN =>
           val placedNumbers =
             toEitherList(
               fromClient.placedNumbers
@@ -265,7 +235,7 @@ object Server extends IOApp {
                     Result(s.winningScores + currentBet.winningScores)
                   )
                   json = ToClient(
-                    First,
+                    BETS_OPEN,
                     p.scores - placedScores,
                     s"Bet - $betType, successfully placed on: $numbers"
                   ).asJson.toString
@@ -274,7 +244,7 @@ object Server extends IOApp {
                 for {
                   _ <- cacheOfResults.put(id, currentBet)
                   json = ToClient(
-                    First,
+                    BETS_OPEN,
                     p.scores - placedScores,
                     s"Bet - $betType, successfully placed on: $numbers"
                   ).asJson.toString
@@ -331,7 +301,7 @@ object Server extends IOApp {
     for {
       cacheOfPlayers <- Cache.of[IO, UUID, Player](3600.seconds, 100.seconds)
       cacheOfResults <- Cache.of[IO, UUID, Result](10.seconds, 1.seconds)
-      initialMessage = PhaseUpdate(First, "Game has started").asJson.toString
+      initialMessage = PhaseUpdate(BETS_OPEN, "Game has started").asJson.toString
       topic <- Topic[IO, WebSocketFrame](WebSocketFrame.Text(initialMessage))
       game <- Game.of(cacheOfPlayers, cacheOfResults, topic)
       exitCode <- {
