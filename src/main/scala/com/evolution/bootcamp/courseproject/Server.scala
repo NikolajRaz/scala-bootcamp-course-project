@@ -57,7 +57,7 @@ object Server extends IOApp {
           _.collect {
             case WebSocketFrame.Text(message, _) => {
               val json = decode[FromClient](message) match {
-                case Right(pB) => inspectPlaceBet(id, pB)
+                case Right(value) => inspectPlaceBet(id, value)
                 case Left(error) =>
                   IO(ErrorMessage(error.toString).asJson.toString)
               }
@@ -112,16 +112,12 @@ object Server extends IOApp {
       gamePhase <- game.getGamePhase
       result <- gamePhase match {
         case BETS_OPEN =>
-          val placedNumbers =
-            toEitherList(
-              fromClient.placedNumbers
-                .map(x => Number.of(x))
-            )
-          val message = placedNumbers match {
+          toEitherList(
+            fromClient.placedNumbers
+              .map(x => Number.of(x))
+          ) match {
             case Right(x) =>
-              val bet =
-                Bet.of(fromClient.betType, x, fromClient.placedScores)
-              bet match {
+              Bet.of(fromClient.betType, x, fromClient.placedScores) match {
                 case Right(value) =>
                   if (fromClient.place) checkBalance(id, value, fromClient)
                   else checkBet(id, value, fromClient)
@@ -132,7 +128,6 @@ object Server extends IOApp {
                 ErrorMessage("Error: Incorrect numbers format").asJson.toString
               )
           }
-          message
         case _ =>
           IO(
             WarnMessage("Warn: You can't place bets in this game phase!").asJson.toString
