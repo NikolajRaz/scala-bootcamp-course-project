@@ -11,7 +11,6 @@ import com.evolution.bootcamp.courseproject.models.{
   Number,
   Phase,
   Player,
-  Result,
   RESULT_ANNOUNCED
 }
 import com.evolution.bootcamp.courseproject.models.Messages.PhaseUpdate
@@ -35,7 +34,6 @@ class RefGame(state: Ref[IO, (Long, Number, Phase)], expiresIn: FiniteDuration)
 object Game {
   def of(
     cacheOfPlayers: Cache[IO, UUID, Player],
-    cacheOfResults: Cache[IO, UUID, Result],
     t: Topic[IO, WebSocketFrame]
   )(implicit T: Timer[IO], C: Concurrent[IO]): IO[Game] = {
     implicit val topic: Topic[IO, WebSocketFrame] = t

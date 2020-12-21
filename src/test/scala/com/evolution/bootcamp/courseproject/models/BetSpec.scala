@@ -400,13 +400,13 @@ class BetSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "return correct result" in {
-    Bet("Si", List(Number(34)), 1).getResult(Number(34)) shouldEqual Result(36)
+    Bet("Si", List(Number(34)), 1).getResult(Number(34)) shouldEqual 36
     Bet("Sp", List(Number(33), Number(36)), 1)
-      .getResult(Number(33)) shouldEqual Result(18)
+      .getResult(Number(33)) shouldEqual 18
     Bet("St", List(Number(34), Number(35), Number(36)), 1)
-      .getResult(Number(35)) shouldEqual Result(12)
+      .getResult(Number(35)) shouldEqual 12
     Bet("Sq", List(Number(26), Number(29), Number(32), Number(35)), 1)
-      .getResult(Number(32)) shouldEqual Result(9)
+      .getResult(Number(32)) shouldEqual 9
     Bet(
       "DS",
       List(
@@ -418,15 +418,15 @@ class BetSpec extends AnyFlatSpec with Matchers {
         Number(36)
       ),
       1
-    ).getResult(Number(34)) shouldEqual Result(6)
+    ).getResult(Number(34)) shouldEqual 6
     Bet("Ba", List(Number(0), Number(2), Number(3)), 1)
-      .getResult(Number(2)) shouldEqual Result(6)
+      .getResult(Number(2)) shouldEqual 6
     Bet("FF", List(Number(0), Number(1), Number(2), Number(3)), 1)
-      .getResult(Number(2)) shouldEqual Result(9)
-    models.Bet("Ev", evenValues, 1).getResult(Number(2)) shouldEqual Result(2)
-    models.Bet("Od", oddValues, 1).getResult(Number(1)) shouldEqual Result(2)
-    Bet("Re", redValues, 1).getResult(Number(34)) shouldEqual Result(2)
-    models.Bet("Do", dozen, 1).getResult(Number(12)) shouldEqual Result(3)
-    models.Bet("Ro", row, 1).getResult(Number(35)) shouldEqual Result(3)
+      .getResult(Number(2)) shouldEqual 9
+    models.Bet("Ev", evenValues, 1).getResult(Number(2)) shouldEqual 2
+    models.Bet("Od", oddValues, 1).getResult(Number(1)) shouldEqual 2
+    Bet("Re", redValues, 1).getResult(Number(34)) shouldEqual 3
+    models.Bet("Do", dozen, 1).getResult(Number(12)) shouldEqual 3
+    models.Bet("Ro", row, 1).getResult(Number(35)) shouldEqual 3
   }
 }

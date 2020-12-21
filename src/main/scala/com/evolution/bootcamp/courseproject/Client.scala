@@ -59,8 +59,9 @@ object Client {
       Source.tick(
         0.seconds,
         10.seconds,
-        tick =
-          TextMessage.Strict(FromClient(10, "Re", List.empty).asJson.toString)
+        tick = TextMessage.Strict(
+          FromClient(true, 10, "Re", List.empty).asJson.toString
+        )
       )
 
     val ((webs, upgradeResponse), closed) =

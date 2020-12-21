@@ -4,8 +4,13 @@ import io.circe.{Decoder, Encoder}
 import io.circe.generic.semiauto.{deriveDecoder, deriveEncoder}
 
 object Messages {
-  sealed trait ClientMessages
-  final case class FromClient(placedScores: Long,
+  sealed trait ClientMessages {
+    val placedScores: Long
+    val betType: String
+    val placedNumbers: List[Int]
+  }
+  final case class FromClient(place: Boolean,
+                              placedScores: Long,
                               betType: String,
                               placedNumbers: List[Int])
       extends ClientMessages
@@ -21,8 +26,8 @@ object Messages {
   final case class WarnMessage(message: String) extends ServerMessages
   final case class ErrorMessage(message: String) extends ServerMessages
 
-  implicit val fromClientDecoder: Decoder[FromClient] = deriveDecoder
-  implicit val fromClientEncoder: Encoder[FromClient] = deriveEncoder
+  implicit val placeBetDecoder: Decoder[FromClient] = deriveDecoder
+  implicit val placeBetEncoder: Encoder[FromClient] = deriveEncoder
   implicit val toClientDecoder: Decoder[ToClient] = deriveDecoder
   implicit val toClientEncoder: Encoder[ToClient] = deriveEncoder
   implicit val resultMessageDecoder: Decoder[ResultMessage] = deriveDecoder

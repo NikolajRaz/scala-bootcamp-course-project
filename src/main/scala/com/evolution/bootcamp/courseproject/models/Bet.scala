@@ -3,8 +3,8 @@ package com.evolution.bootcamp.courseproject.models
 final case class Bet(betType: String,
                      numbers: List[Number],
                      placedScores: Long) {
-  def getResult(number: Number): Result = {
-    val result = if (numbers.contains(number)) {
+  def getResult(number: Number): Long = {
+    if (numbers.contains(number)) {
       betType match {
         case "Si" => placedScores * 36
         case "Sp" => placedScores * 18
@@ -23,7 +23,6 @@ final case class Bet(betType: String,
         case "Ro" => placedScores * 3
       }
     } else 0
-    Result(result)
   }
 }
 
