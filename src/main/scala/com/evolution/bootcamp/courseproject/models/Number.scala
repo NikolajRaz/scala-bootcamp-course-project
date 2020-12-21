@@ -1,4 +1,4 @@
-package com.evolution.bootcamp.courseproject
+package com.evolution.bootcamp.courseproject.models
 
 import cats.syntax.either._
 

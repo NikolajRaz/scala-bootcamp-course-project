@@ -1,4 +1,4 @@
-package com.evolution.bootcamp.courseproject
+package com.evolution.bootcamp.courseproject.models
 
 sealed trait Color
 

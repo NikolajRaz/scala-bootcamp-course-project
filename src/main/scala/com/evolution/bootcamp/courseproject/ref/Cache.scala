@@ -1,4 +1,4 @@
-package com.evolution.bootcamp.courseproject
+package com.evolution.bootcamp.courseproject.ref
 
 import cats.implicits._
 import cats.Monad

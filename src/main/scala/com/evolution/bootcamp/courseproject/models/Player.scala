@@ -1,4 +1,4 @@
-package com.evolution.bootcamp.courseproject
+package com.evolution.bootcamp.courseproject.models
 
 import cats.effect.IO
 import fs2.concurrent.Queue

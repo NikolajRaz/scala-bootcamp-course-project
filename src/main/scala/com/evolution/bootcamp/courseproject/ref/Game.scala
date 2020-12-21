@@ -1,10 +1,20 @@
-package com.evolution.bootcamp.courseproject
+package com.evolution.bootcamp.courseproject.ref
+
 import java.util.UUID
 
 import cats.effect.{Clock, Concurrent, IO, Timer}
 import cats.effect.concurrent.Ref
 import cats.syntax.all._
-import com.evolution.bootcamp.courseproject.Messages.PhaseUpdate
+import com.evolution.bootcamp.courseproject.models.{
+  BETS_CLOSED,
+  BETS_OPEN,
+  Number,
+  Phase,
+  Player,
+  Result,
+  RESULT_ANNOUNCED
+}
+import com.evolution.bootcamp.courseproject.models.Messages.PhaseUpdate
 import fs2.concurrent.Topic
 import io.circe.syntax._
 import org.http4s.websocket.WebSocketFrame

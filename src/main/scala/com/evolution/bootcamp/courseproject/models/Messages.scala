@@ -1,7 +1,7 @@
-package com.evolution.bootcamp.courseproject
+package com.evolution.bootcamp.courseproject.models
 
-import io.circe.generic.semiauto.{deriveDecoder, deriveEncoder}
 import io.circe.{Decoder, Encoder}
+import io.circe.generic.semiauto.{deriveDecoder, deriveEncoder}
 
 object Messages {
   sealed trait ClientMessages

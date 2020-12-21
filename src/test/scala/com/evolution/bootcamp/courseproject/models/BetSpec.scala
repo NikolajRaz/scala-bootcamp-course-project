@@ -1,5 +1,6 @@
-package com.evolution.bootcamp.courseproject
+package com.evolution.bootcamp.courseproject.models
 
+import com.evolution.bootcamp.courseproject.models
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
@@ -422,10 +423,10 @@ class BetSpec extends AnyFlatSpec with Matchers {
       .getResult(Number(2)) shouldEqual Result(6)
     Bet("FF", List(Number(0), Number(1), Number(2), Number(3)), 1)
       .getResult(Number(2)) shouldEqual Result(9)
-    Bet("Ev", evenValues, 1).getResult(Number(2)) shouldEqual Result(2)
-    Bet("Od", oddValues, 1).getResult(Number(1)) shouldEqual Result(2)
+    models.Bet("Ev", evenValues, 1).getResult(Number(2)) shouldEqual Result(2)
+    models.Bet("Od", oddValues, 1).getResult(Number(1)) shouldEqual Result(2)
     Bet("Re", redValues, 1).getResult(Number(34)) shouldEqual Result(2)
-    Bet("Do", dozen, 1).getResult(Number(12)) shouldEqual Result(3)
-    Bet("Ro", row, 1).getResult(Number(35)) shouldEqual Result(3)
+    models.Bet("Do", dozen, 1).getResult(Number(12)) shouldEqual Result(3)
+    models.Bet("Ro", row, 1).getResult(Number(35)) shouldEqual Result(3)
   }
 }

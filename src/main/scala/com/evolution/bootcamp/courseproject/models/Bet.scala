@@ -1,4 +1,4 @@
-package com.evolution.bootcamp.courseproject
+package com.evolution.bootcamp.courseproject.models
 
 final case class Bet(betType: String,
                      numbers: List[Number],
