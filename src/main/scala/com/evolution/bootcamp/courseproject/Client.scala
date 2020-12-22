@@ -6,7 +6,7 @@ import akka.http.scaladsl.model.StatusCodes
 import akka.http.scaladsl.model.ws.{Message, TextMessage, WebSocketRequest}
 import akka.stream.scaladsl.{Flow, Keep, Sink, Source}
 import akka.stream.OverflowStrategy
-import com.evolution.bootcamp.courseproject.models.{BETS_OPENED, PLACE_BET}
+import com.evolution.bootcamp.courseproject.models._
 import com.evolution.bootcamp.courseproject.models.Messages.{
   ErrorMessage,
   FromClient,
@@ -73,13 +73,33 @@ object Client {
     }
 
     Thread.sleep(1.seconds.toMillis)
+    println("Client: Placing bet on single 20")
+    ws ! TextMessage.Strict(
+      FromClient(PLACE_BET, 10, SINGLE, List(20)).asJson.toString
+    )
+    println("Client: Placing bet on split 34 and 35")
+    ws ! TextMessage.Strict(
+      FromClient(PLACE_BET, 10, SPLIT, List(34, 35)).asJson.toString
+    )
     println("Client: Placing bet on red values")
     ws ! TextMessage.Strict(
-      FromClient(PLACE_BET, 10, "Re", List.empty).asJson.toString
+      FromClient(PLACE_BET, 10, RED_NUMBERS, List.empty).asJson.toString
     )
-    println("Client: Placing bet on single 1")
+    println("Client: Accidentally placing one more bet on red")
     ws ! TextMessage.Strict(
-      FromClient(PLACE_BET, 10, "Si", List(1)).asJson.toString
+      FromClient(PLACE_BET, 10, RED_NUMBERS, List.empty).asJson.toString
+    )
+    println("Client: Placing bet on Street 31,32,33")
+    ws ! TextMessage.Strict(
+      FromClient(PLACE_BET, 10, STREET, List(31)).asJson.toString
+    )
+    println("Client: Placing bet on single first dozen from 1 to 12")
+    ws ! TextMessage.Strict(
+      FromClient(PLACE_BET, 10, DOZEN, List(1)).asJson.toString
+    )
+    println("Client: Removing wrong second bet placed on red")
+    ws ! TextMessage.Strict(
+      FromClient(REMOVE_BET, 10, RED_NUMBERS, List.empty).asJson.toString
     )
     Thread.sleep(10.seconds.toMillis)
   }

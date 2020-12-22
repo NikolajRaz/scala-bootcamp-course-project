@@ -7,7 +7,7 @@ object Messages {
   sealed trait ClientMessages
   final case class FromClient(requestType: Request,
                               placedScores: Long,
-                              betType: String,
+                              betType: BetType,
                               placedNumbers: List[Int])
       extends ClientMessages
   sealed trait ServerMessages
@@ -24,6 +24,8 @@ object Messages {
 
   implicit val placeBetDecoder: Decoder[FromClient] = deriveDecoder
   implicit val placeBetEncoder: Encoder[FromClient] = deriveEncoder
+  implicit val betTypeDecoder: Decoder[BetType] = deriveDecoder
+  implicit val betTypeEncoder: Encoder[BetType] = deriveEncoder
   implicit val toClientDecoder: Decoder[ToClient] = deriveDecoder
   implicit val toClientEncoder: Encoder[ToClient] = deriveEncoder
   implicit val resultMessageDecoder: Decoder[ResultMessage] = deriveDecoder

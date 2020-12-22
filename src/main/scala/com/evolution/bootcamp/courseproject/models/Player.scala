@@ -7,4 +7,4 @@ import org.http4s.websocket.WebSocketFrame
 final case class Player(scores: Long,
                         bets: List[Bet],
                         winningScores: Long,
-                        connection: Queue[IO, WebSocketFrame])
+                        queue: Queue[IO, WebSocketFrame])

@@ -1,26 +1,26 @@
 package com.evolution.bootcamp.courseproject.models
 
-final case class Bet(betType: String,
+final case class Bet(betType: BetType,
                      numbers: List[Number],
                      placedScores: Long) {
   def getResult(number: Number): Long = {
     if (numbers.contains(number)) {
       betType match {
-        case "Si" => placedScores * 36
-        case "Sp" => placedScores * 18
-        case "St" => placedScores * 12
-        case "Sq" => placedScores * 9
-        case "DS" => placedScores * 6
-        case "Ba" => placedScores * 6
-        case "FF" => placedScores * 9
-        case "Re" => placedScores * 2
-        case "Bl" => placedScores * 2
-        case "Ev" => placedScores * 2
-        case "Od" => placedScores * 2
-        case "Sm" => placedScores * 2
-        case "Bi" => placedScores * 2
-        case "Do" => placedScores * 3
-        case "Ro" => placedScores * 3
+        case SINGLE        => placedScores * 36
+        case SPLIT         => placedScores * 18
+        case STREET        => placedScores * 12
+        case SQUARE        => placedScores * 9
+        case DOUBLE_STREET => placedScores * 6
+        case BASKET        => placedScores * 6
+        case FIRST_FOUR    => placedScores * 9
+        case RED_NUMBERS   => placedScores * 2
+        case BLACK_NUMBERS => placedScores * 2
+        case EVEN          => placedScores * 2
+        case ODD           => placedScores * 2
+        case SMALL         => placedScores * 2
+        case BIG           => placedScores * 2
+        case DOZEN         => placedScores * 3
+        case ROW           => placedScores * 3
       }
     } else 0
   }
@@ -29,26 +29,26 @@ final case class Bet(betType: String,
 object Bet {
   val streets = List(1, 4, 7, 10, 13, 16, 19, 22, 25, 28, 31, 34)
 
-  def of(betType: String,
+  def of(betType: BetType,
          numbers: List[Number],
          placedScores: Long): Either[String, Bet] = {
     val validNumbers: Option[List[Number]] = betType match {
-      case "Si" => single(numbers)
-      case "Sp" => split(numbers)
-      case "St" => street(numbers)
-      case "Sq" => square(numbers)
-      case "DS" => doubleStreet(numbers)
-      case "Ba" => basket(numbers)
-      case "FF" => firstFour(numbers)
-      case "Re" => red(numbers)
-      case "Bl" => black(numbers)
-      case "Ev" => even(numbers)
-      case "Od" => odd(numbers)
-      case "Sm" => small(numbers)
-      case "Bi" => big(numbers)
-      case "Do" => dozens(numbers)
-      case "Ro" => rows(numbers)
-      case _    => None
+      case SINGLE        => single(numbers)
+      case SPLIT         => split(numbers)
+      case STREET        => street(numbers)
+      case SQUARE        => square(numbers)
+      case DOUBLE_STREET => doubleStreet(numbers)
+      case BASKET        => basket(numbers)
+      case FIRST_FOUR    => firstFour(numbers)
+      case RED_NUMBERS   => red(numbers)
+      case BLACK_NUMBERS => black(numbers)
+      case EVEN          => even(numbers)
+      case ODD           => odd(numbers)
+      case SMALL         => small(numbers)
+      case BIG           => big(numbers)
+      case DOZEN         => dozens(numbers)
+      case ROW           => rows(numbers)
+      case _             => None
     }
 
     validNumbers match {

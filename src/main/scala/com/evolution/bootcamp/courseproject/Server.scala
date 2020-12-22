@@ -3,19 +3,7 @@ package com.evolution.bootcamp.courseproject
 import java.util.UUID
 
 import cats.effect.{ExitCode, IO, IOApp}
-import com.evolution.bootcamp.courseproject.models.{
-  Bet,
-  BETS_CLOSED,
-  BETS_OPENED,
-  Black,
-  Number,
-  Phase,
-  PLACE_BET,
-  Player,
-  Red,
-  REMOVE_BET,
-  RESULT_ANNOUNCED
-}
+import com.evolution.bootcamp.courseproject.models._
 import com.evolution.bootcamp.courseproject.models.Messages.{
   ErrorMessage,
   FromClient,
@@ -52,7 +40,7 @@ object Server extends IOApp {
           _.collect {
             case WebSocketFrame.Text(message, _) => {
               val json = decode[FromClient](message) match {
-                case Right(value) => inspectPlaceBet(id, value)
+                case Right(value) => inspectRequest(id, value)
                 case Left(error) =>
                   IO(ErrorMessage(error.toString).asJson.toString)
               }
@@ -99,7 +87,7 @@ object Server extends IOApp {
         } yield response
     }
 
-  private def inspectPlaceBet(id: UUID, fromClient: FromClient)(
+  private def inspectRequest(id: UUID, fromClient: FromClient)(
     implicit cacheOfPlayers: Cache[IO, UUID, Player],
     game: Game
   ): IO[String] = {
@@ -184,7 +172,7 @@ object Server extends IOApp {
                 player.scores + bet.placedScores,
                 player.bets.filter(x => x == bet) ++ newList,
                 player.winningScores - bet.getResult(number),
-                player.connection
+                player.queue
               )
             )
             message <- IO(
@@ -221,7 +209,7 @@ object Server extends IOApp {
           player.scores - placedScores,
           player.bets ++ List(bet),
           player.winningScores + bet.getResult(number),
-          player.connection
+          player.queue
         )
       )
       betType <- betTypeParser(bet.betType)
@@ -288,7 +276,7 @@ object Server extends IOApp {
             )
             _ <- cacheOfPlayers.update(
               id,
-              Player(p.scores + p.winningScores, List.empty, 0, p.connection)
+              Player(p.scores + p.winningScores, List.empty, 0, p.queue)
             )
           } yield message
         case None =>
@@ -306,24 +294,24 @@ object Server extends IOApp {
     }
   }
 
-  private def betTypeParser(betType: String): IO[String] = {
-    IO(betType match {
-      case "Si" => "Single"
-      case "Sp" => "Split"
-      case "St" => "Street"
-      case "Sq" => "Square"
-      case "DS" => "Double street"
-      case "Ba" => "Basket"
-      case "FF" => "First four"
-      case "Re" => "Red"
-      case "Bl" => "Black"
-      case "Ev" => "Even"
-      case "Od" => "Odd"
-      case "Sm" => "Small"
-      case "Bi" => "Big"
-      case "Do" => "Dozen"
-      case "Ro" => "Row"
-      case _    => "Incorrect bet type"
+  private def betTypeParser(betType: BetType): IO[String] = {
+    IO(body = betType match {
+      case SINGLE        => "Single"
+      case SPLIT         => "Split"
+      case STREET        => "Street"
+      case SQUARE        => "Square"
+      case DOUBLE_STREET => "Double street"
+      case BASKET        => "Basket"
+      case FIRST_FOUR    => "First four"
+      case RED_NUMBERS   => "Red"
+      case BLACK_NUMBERS => "Black"
+      case EVEN          => "Even"
+      case ODD           => "Odd"
+      case SMALL         => "Small"
+      case BIG           => "Big"
+      case DOZEN         => "Dozen"
+      case ROW           => "Row"
+      case _             => "Incorrect bet type"
     })
   }
 
