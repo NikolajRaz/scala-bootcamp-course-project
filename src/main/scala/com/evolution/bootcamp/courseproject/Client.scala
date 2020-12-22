@@ -93,7 +93,7 @@ object Client {
     ws ! TextMessage.Strict(
       FromClient(PLACE_BET, 10, STREET, List(31)).asJson.toString
     )
-    println("Client: Placing bet on single first dozen from 1 to 12")
+    println("Client: Placing bet on first dozen from 1 to 12")
     ws ! TextMessage.Strict(
       FromClient(PLACE_BET, 10, DOZEN, List(1)).asJson.toString
     )
