@@ -102,6 +102,20 @@ object Client {
       FromClient(REMOVE_BET, 10, RED_NUMBERS, List.empty).asJson.toString
     )
     Thread.sleep(10.seconds.toMillis)
+    println("Client: Trying to make bet in second phase")
+    ws ! TextMessage.Strict(
+      FromClient(PLACE_BET, 10, DOZEN, List(1)).asJson.toString
+    )
+    Thread.sleep(10.seconds.toMillis)
+    println("Client: Trying to make bet in third phase")
+    ws ! TextMessage.Strict(
+      FromClient(PLACE_BET, 10, DOZEN, List(1)).asJson.toString
+    )
+    Thread.sleep(10.seconds.toMillis)
+    println("Client: Trying to make bet in new first phase")
+    ws ! TextMessage.Strict(
+      FromClient(PLACE_BET, 10, DOZEN, List(1)).asJson.toString
+    )
   }
 
   private def decodeJsonMessage[V](

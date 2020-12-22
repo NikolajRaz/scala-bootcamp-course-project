@@ -232,7 +232,11 @@ object Server extends IOApp {
       case BETS_OPENED =>
         generateToClientMessage(id, BETS_OPENED, "Please make your bets!")
       case BETS_CLOSED =>
-        generateToClientMessage(id, BETS_CLOSED, "Calculating results...")
+        generateToClientMessage(
+          id,
+          BETS_CLOSED,
+          "Bets closed. Calculating results..."
+        )
       case RESULT_ANNOUNCED => generateResultMessage(id)
     }
   }
